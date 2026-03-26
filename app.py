@@ -5,10 +5,12 @@ from datetime import date
 app = Flask(__name__)
 DB_PATH = "biosolutions.db"
 
+
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def next_quote_number(conn):
     row = conn.execute("""
@@ -29,6 +31,7 @@ def next_quote_number(conn):
         last = 0
 
     return f"COT-{last + 1:03d}"
+
 
 def build_initial_template_data_from_equipo(equipo_row):
     """
@@ -75,9 +78,11 @@ def build_initial_template_data_from_equipo(equipo_row):
         "imagen": (equipo_row["imagen"] or "").strip()
     }
 
+
 @app.route("/")
 def dashboard():
     return render_template("index.html", active_page="inicio")
+
 
 @app.route("/cotizador")
 def cotizador():
@@ -86,7 +91,7 @@ def cotizador():
     plantillas = conn.execute("""
         SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
         FROM plantillas p
-        JOIN equipos e ON e.id = p.equipo_id
+        LEFT JOIN equipos e ON e.id = p.equipo_id
         WHERE p.activo = 1
         ORDER BY p.nombre_plantilla ASC
     """).fetchall()
@@ -119,22 +124,27 @@ def cotizador():
         today=str(date.today())
     )
 
+
 @app.route("/equipos")
 def equipos_page():
     conn = get_db_connection()
     equipos = conn.execute("""
-        SELECT * FROM equipos
+        SELECT *
+        FROM equipos
         WHERE activo = 1
         ORDER BY id DESC
     """).fetchall()
     conn.close()
     return render_template("equipos.html", equipos=equipos, active_page="equipos")
 
+
 @app.route("/plantillas")
 def plantillas_page():
     conn = get_db_connection()
+
     equipos = conn.execute("""
-        SELECT * FROM equipos
+        SELECT *
+        FROM equipos
         WHERE activo = 1
         ORDER BY id DESC
     """).fetchall()
@@ -142,7 +152,7 @@ def plantillas_page():
     plantillas = conn.execute("""
         SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
         FROM plantillas p
-        JOIN equipos e ON e.id = p.equipo_id
+        LEFT JOIN equipos e ON e.id = p.equipo_id
         WHERE p.activo = 1
         ORDER BY p.id DESC
     """).fetchall()
@@ -155,22 +165,26 @@ def plantillas_page():
         active_page="plantillas"
     )
 
+
 @app.route("/cotizaciones")
 def cotizaciones_page():
     conn = get_db_connection()
     cotizaciones = conn.execute("""
-        SELECT * FROM cotizaciones
+        SELECT *
+        FROM cotizaciones
         ORDER BY id DESC
     """).fetchall()
     conn.close()
     return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
+
 
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
 def cotizacion_json(cotizacion_id):
     conn = get_db_connection()
 
     cot = conn.execute("""
-        SELECT * FROM cotizaciones
+        SELECT *
+        FROM cotizaciones
         WHERE id = ?
     """, (cotizacion_id,)).fetchone()
 
@@ -231,6 +245,7 @@ def cotizacion_json(cotizacion_id):
 
     return jsonify(payload)
 
+
 @app.route("/cotizaciones/guardar", methods=["POST"])
 def guardar_cotizacion():
     data = request.get_json(force=True)
@@ -251,13 +266,13 @@ def guardar_cotizacion():
     total = 0
     for item in items:
         try:
-          precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
+            precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
         except ValueError:
-          precio = 0
+            precio = 0
         try:
-          cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
+            cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
         except ValueError:
-          cantidad = 1
+            cantidad = 1
         total += precio * cantidad
 
     conn = get_db_connection()
@@ -347,6 +362,7 @@ def guardar_cotizacion():
         "total": total
     })
 
+
 @app.route("/equipos/nuevo", methods=["POST"])
 def crear_equipo():
     nombre = request.form.get("nombre", "").strip()
@@ -377,15 +393,8 @@ def crear_equipo():
 
     return redirect(url_for("equipos_page"))
 
+
 @app.route("/plantillas/nueva", methods=["POST"])
-def crear_plantilla():
-    equipo_id = request.form.get("equipo_id", "").strip()
-    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
-    nombre_comercial = request.form.get("nombre_comercial", "").strip()
-    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
-    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
-    imagen = request.form.get("plantilla_imagen", "").strip()
-    precio_base = request.form.get("precio_base", "").stri@app.route("/plantillas/nueva", methods=["POST"])
 def crear_plantilla():
     modo_creacion = request.form.get("modo_creacion", "vacia").strip()
     equipo_id_raw = request.form.get("equipo_id", "").strip()
@@ -473,6 +482,7 @@ def crear_plantilla():
     conn.close()
 
     return redirect(url_for("plantillas_page"))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=True)
