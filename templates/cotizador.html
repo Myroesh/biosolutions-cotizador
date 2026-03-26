@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Cotizador - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .field select{
+    width:100%;
+    padding:10px 11px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:13px;
+    font-family:inherit;
+    background:#fff;
+  }
+
+  .tiny-note{
+    font-size:12px;
+    color:#64748b;
+    line-height:1.6;
+    margin-top:8px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-box">
+      <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="brand-logo" />
+      <p class="brand-note">Cotizador técnico-comercial v2</p>
+    </div>
+
+    <section class="panel">
+      <h2>Acciones</h2>
+      <div class="button-group">
+        <button type="button" id="newQuotationBtn" class="btn btn-primary">Nueva cotización</button>
+        <button type="button" id="saveQuotationBtn" class="btn btn-secondary">Guardar cotización</button>
+        <button type="button" id="printBtn" class="btn btn-accent">Exportar / Imprimir PDF</button>
+      </div>
+      <p class="tiny-note">La cotización se guardará en la base de datos y luego podrás volver a abrirla.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Agregar desde plantilla</h2>
+      <div class="field">
+        <label for="templateSelect">Plantilla disponible</label>
+        <select id="templateSelect">
+          <option value="">Selecciona una plantilla</option>
+          {% for p in plantillas %}
+            <option value="{{ p['id'] }}">
+              {{ p["nombre_plantilla"] }}
+              {% if p["equipo_marca"] %} - {{ p["equipo_marca"] }}{% endif %}
+              {% if p["equipo_modelo"] %} {{ p["equipo_modelo"] }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="button" id="addTemplateBtn" class="btn btn-primary btn-small">Agregar plantilla</button>
+      <p class="tiny-note">Inserta una variante ya creada dentro de la cotización actual y luego edítala si hace falta.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Datos de cotización</h2>
+
+      <div class="field">
+        <label for="qNumber">Número</label>
+        <input id="qNumber" type="text" value="{{ new_quote_number }}" placeholder="COT-2026-001" />
+      </div>
+
+      <div class="field">
+        <label for="qDate">Fecha</label>
+        <input id="qDate" type="date" value="{{ today }}" />
+      </div>
+
+      <div class="field">
+        <label for="qClient">Cliente</label>
+        <input id="qClient" type="text" />
+      </div>
+
+      <div class="field">
+        <label for="qAttention">Atención</label>
+        <input id="qAttention" type="text" />
+      </div>
+
+      <div class="field">
+        <label for="qCity">Ciudad</label>
+        <input id="qCity" type="text" />
+      </div>
+
+      <div class="field">
+        <label for="qValidity">Validez</label>
+        <input id="qValidity" type="text" value="15 días" placeholder="15 días" />
+      </div>
+
+      <div class="field">
+        <label for="qPaymentTerms">Forma de pago</label>
+        <textarea id="qPaymentTerms"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="qNotes">Observaciones generales</label>
+        <textarea id="qNotes"></textarea>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Equipos</h2>
+        <button type="button" id="addItemBtn" class="btn btn-primary btn-small">+ Agregar vacío</button>
+      </div>
+      <div id="itemsList" class="items-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Equipo seleccionado</h2>
+        <div class="inline-actions">
+          <button type="button" id="duplicateItemBtn" class="btn btn-secondary btn-small">Duplicar</button>
+          <button type="button" id="deleteItemBtn" class="btn btn-danger btn-small">Eliminar</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="itemTitle">Nombre del equipo</label>
+        <input id="itemTitle" type="text" />
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="itemBrand">Marca</label>
+          <input id="itemBrand" type="text" />
+        </div>
+        <div class="field">
+          <label for="itemModel">Modelo</label>
+          <input id="itemModel" type="text" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="itemOrigin">Origen</label>
+          <input id="itemOrigin" type="text" />
+        </div>
+        <div class="field">
+          <label for="itemWarranty">Garantía</label>
+          <input id="itemWarranty" type="text" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="itemPrice">Precio</label>
+          <input id="itemPrice" type="text" placeholder="10190.00" />
+        </div>
+        <div class="field">
+          <label for="itemQuantity">Cantidad</label>
+          <input id="itemQuantity" type="text" value="1" />
+        </div>
+      </div>
+
+      <div class="field checkbox-field">
+        <label><input id="itemShowPrice" type="checkbox" /> Mostrar precio</label>
+      </div>
+
+      <div class="field">
+        <label for="itemSubtitle">Descripción breve</label>
+        <textarea id="itemSubtitle"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="itemDescriptionLong">Descripción amplia</label>
+        <textarea id="itemDescriptionLong"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="itemImageUrl">Ruta de imagen o URL</label>
+        <input id="itemImageUrl" type="text" placeholder="/static/equipos/monitor.jpg" />
+      </div>
+
+      <div class="field">
+        <label for="itemImageUpload">o subir imagen</label>
+        <input id="itemImageUpload" type="file" accept="image/*" />
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Características destacadas</h2>
+        <button type="button" id="addHighlightBtn" class="btn btn-secondary btn-small">+ Agregar</button>
+      </div>
+      <div id="highlightsEditor"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Especificaciones</h2>
+        <button type="button" id="addSpecBtn" class="btn btn-secondary btn-small">+ Fila</button>
+      </div>
+      <div id="specsEditor"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Usos</h2>
+        <button type="button" id="addUseBtn" class="btn btn-secondary btn-small">+ Agregar</button>
+      </div>
+      <div id="usesEditor"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Accesorios</h2>
+        <button type="button" id="addAccessoryBtn" class="btn btn-secondary btn-small">+ Agregar</button>
+      </div>
+      <div id="accessoriesEditor"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Ventajas</h2>
+        <button type="button" id="addAdvantageBtn" class="btn btn-secondary btn-small">+ Agregar</button>
+      </div>
+      <div id="advantagesEditor"></div>
+    </section>
+  </aside>
+
+  <main class="preview-area">
+    <div id="previewPages"></div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.PLANTILLAS_DATA = {{ (plantillas_json or [])|tojson }};
+  window.COTIZACION_ID = {{ request.args.get('cotizacion_id', 'null') }};
+</script>
+<script src="{{ url_for('static', filename='app.js') }}?v=9"></script>
+{% endblock %}

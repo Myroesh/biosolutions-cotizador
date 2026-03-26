@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Plantillas / variantes - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-grid{
+    display:grid;
+    grid-template-columns: 420px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  .page-card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+
+  .page-card h2{
+    margin:0 0 14px;
+    color:#0a4570;
+    font-size:20px;
+  }
+
+  .field{
+    margin-bottom:12px;
+  }
+
+  .field label{
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+    font-weight:700;
+    color:#334155;
+  }
+
+  .field input,
+  .field textarea,
+  .field select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .field textarea{
+    min-height:90px;
+    resize:vertical;
+  }
+
+  .grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .btn{
+    background:#0b8fb0;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .lib-list{
+    display:grid;
+    gap:10px;
+  }
+
+  .lib-card{
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    padding:14px;
+    background:#f8fafc;
+  }
+
+  .lib-card strong{
+    display:block;
+    margin-bottom:6px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .lib-card span{
+    display:block;
+    font-size:13px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  .tiny-note{
+    font-size:12px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  @media (max-width: 1100px){
+    .page-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="page-card">
+    <h2>Nueva plantilla / variante</h2>
+
+    <form method="post" action="/plantillas/nueva">
+      <div class="field">
+        <label for="equipo_id">Equipo maestro base *</label>
+        <select id="equipo_id" name="equipo_id" required>
+          <option value="">Selecciona un equipo</option>
+          {% for equipo in equipos %}
+            <option value="{{ equipo['id'] }}">
+              {{ equipo["nombre"] }}
+              {% if equipo["marca"] %} - {{ equipo["marca"] }}{% endif %}
+              {% if equipo["modelo"] %} {{ equipo["modelo"] }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="nombre_plantilla">Nombre de plantilla *</label>
+        <input type="text" id="nombre_plantilla" name="nombre_plantilla" required placeholder="Yonker 8000B pediátrico">
+      </div>
+
+      <div class="field">
+        <label for="nombre_comercial">Nombre comercial</label>
+        <input type="text" id="nombre_comercial" name="nombre_comercial" placeholder="Monitor de signos vitales Yonker 8000B con accesorios pediátricos">
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="precio_base">Precio base</label>
+          <input type="text" id="precio_base" name="precio_base" placeholder="10190.00">
+        </div>
+
+        <div class="field">
+          <label style="display:flex; align-items:center; gap:8px; margin-top:30px;">
+            <input type="checkbox" name="mostrar_precio_por_defecto">
+            Mostrar precio por defecto
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="plantilla_imagen">Ruta de imagen</label>
+        <input type="text" id="plantilla_imagen" name="plantilla_imagen" placeholder="equipos/yonker-8000b.jpg">
+      </div>
+
+      <div class="field">
+        <label for="plantilla_descripcion_breve">Descripción breve</label>
+        <textarea id="plantilla_descripcion_breve" name="plantilla_descripcion_breve"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="plantilla_descripcion_larga">Descripción larga</label>
+        <textarea id="plantilla_descripcion_larga" name="plantilla_descripcion_larga"></textarea>
+      </div>
+
+      <button type="submit" class="btn">Guardar plantilla / variante</button>
+    </form>
+
+    <p class="tiny-note" style="margin-top:14px;">
+      Aquí guardas variantes reutilizables por equipo: pediátrico, neonatal, marketing sin precio, full accesorios, etc.
+    </p>
+  </section>
+
+  <section class="page-card">
+    <h2>Biblioteca de plantillas</h2>
+
+    {% if plantillas %}
+      <div class="lib-list">
+        {% for p in plantillas %}
+          <div class="lib-card">
+            <strong>{{ p["nombre_plantilla"] }}</strong>
+            <span>
+              Base: {{ p["equipo_nombre"] }}
+              {% if p["equipo_marca"] %} - {{ p["equipo_marca"] }}{% endif %}
+              {% if p["equipo_modelo"] %} {{ p["equipo_modelo"] }}{% endif %}
+            </span>
+            {% if p["nombre_comercial"] %}
+              <span>Nombre comercial: {{ p["nombre_comercial"] }}</span>
+            {% endif %}
+            <span>
+              Precio base: Bs. {{ p["precio_base"] or 0 }}
+              {% if p["mostrar_precio_por_defecto"] %} | Mostrar precio: Sí{% else %} | Mostrar precio: No{% endif %}
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="tiny-note">No hay plantillas cargadas todavía.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

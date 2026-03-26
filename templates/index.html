@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Biosolutions Cotizador{% endblock %}
+
+{% block content %}
+  <div class="dashboard-grid">
+    <div class="dash-card">
+      <h3>Cotizador</h3>
+      <p>Editor técnico-comercial multipágina para armar fichas, agregar varios equipos y exportar a PDF.</p>
+      <a href="{{ url_for('cotizador') }}">Abrir cotizador</a>
+    </div>
+
+    <div class="dash-card">
+      <h3>Equipos maestro</h3>
+      <p>Base técnica principal de cada equipo. Aquí se guardan las fichas madre reutilizables.</p>
+      <a href="{{ url_for('equipos_page') }}">Ir a equipos</a>
+    </div>
+
+    <div class="dash-card">
+      <h3>Plantillas / variantes</h3>
+      <p>Variantes comerciales reutilizables: pediátrico, neonatal, marketing sin precio, full accesorios, etc.</p>
+      <a href="{{ url_for('plantillas_page') }}">Ir a plantillas</a>
+    </div>
+
+    <div class="dash-card">
+      <h3>Cotizaciones guardadas</h3>
+      <p>Revisar, abrir y editar cotizaciones ya emitidas como COT-001, COT-002 y siguientes.</p>
+      <a href="{{ url_for('cotizaciones_page') }}">Ver cotizaciones</a>
+    </div>
+  </div>
+{% endblock %}

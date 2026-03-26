@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Cotizaciones - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+
+  .page-card h2{
+    margin:0 0 14px;
+    color:#0a4570;
+    font-size:20px;
+  }
+
+  .lib-list{
+    display:grid;
+    gap:10px;
+  }
+
+  .lib-card{
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    padding:14px;
+    background:#f8fafc;
+  }
+
+  .lib-card strong{
+    display:block;
+    margin-bottom:6px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .lib-card span{
+    display:block;
+    font-size:13px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  .actions{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .actions a{
+    text-decoration:none;
+    background:#0b8fb0;
+    color:#fff;
+    padding:8px 12px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .tiny-note{
+    font-size:12px;
+    color:#64748b;
+    line-height:1.6;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page-card">
+  <h2>Cotizaciones guardadas</h2>
+
+  {% if cotizaciones %}
+    <div class="lib-list">
+      {% for c in cotizaciones %}
+        <div class="lib-card">
+          <strong>{{ c["numero"] or "Sin número" }}</strong>
+          <span>
+            {% if c["cliente"] %}Cliente: {{ c["cliente"] }}{% endif %}
+            {% if c["fecha"] %} | Fecha: {{ c["fecha"] }}{% endif %}
+          </span>
+          <span>
+            {% if c["ciudad"] %}Ciudad: {{ c["ciudad"] }}{% endif %}
+            {% if c["validez"] %} | Validez: {{ c["validez"] }}{% endif %}
+          </span>
+          <span>
+            Total: Bs. {{ c["total"] or 0 }}
+            {% if c["estado"] %} | Estado: {{ c["estado"] }}{% endif %}
+          </span>
+          <div class="actions">
+            <a href="{{ url_for('cotizador') }}?cotizacion_id={{ c['id'] }}">Abrir en cotizador</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="tiny-note">Todavía no hay cotizaciones guardadas en la base.</p>
+  {% endif %}
+</section>
+{% endblock %}

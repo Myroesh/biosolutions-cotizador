@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Equipos maestro - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .field select{
+    width:100%;
+    padding:10px 11px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:13px;
+    font-family:inherit;
+    background:#fff;
+  }
+
+  .page-grid{
+    display:grid;
+    grid-template-columns: 420px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  .page-card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+
+  .page-card h2{
+    margin:0 0 14px;
+    color:#0a4570;
+    font-size:20px;
+  }
+
+  .field{
+    margin-bottom:12px;
+  }
+
+  .field label{
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+    font-weight:700;
+    color:#334155;
+  }
+
+  .field input,
+  .field textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    box-sizing:border-box;
+  }
+
+  .field textarea{
+    min-height:90px;
+    resize:vertical;
+  }
+
+  .grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .btn{
+    background:#0b8fb0;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .lib-list{
+    display:grid;
+    gap:10px;
+  }
+
+  .lib-card{
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    padding:14px;
+    background:#f8fafc;
+  }
+
+  .lib-card strong{
+    display:block;
+    margin-bottom:6px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .lib-card span{
+    display:block;
+    font-size:13px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  .tiny-note{
+    font-size:12px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  @media (max-width: 1100px){
+    .page-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="page-card">
+    <h2>Nuevo equipo maestro</h2>
+
+    <form method="post" action="/equipos/nuevo">
+      <div class="field">
+        <label for="nombre">Nombre del equipo *</label>
+        <input type="text" id="nombre" name="nombre" required>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="marca">Marca</label>
+          <input type="text" id="marca" name="marca">
+        </div>
+        <div class="field">
+          <label for="modelo">Modelo</label>
+          <input type="text" id="modelo" name="modelo">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="origen">Origen</label>
+          <input type="text" id="origen" name="origen">
+        </div>
+        <div class="field">
+          <label for="garantia_base">Garantía base</label>
+          <input type="text" id="garantia_base" name="garantia_base" placeholder="1 año">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="imagen">Ruta de imagen</label>
+        <input type="text" id="imagen" name="imagen" placeholder="equipos/yonker-8000b.jpg">
+      </div>
+
+      <div class="field">
+        <label for="descripcion_breve">Descripción breve</label>
+        <textarea id="descripcion_breve" name="descripcion_breve"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="descripcion_larga">Descripción larga</label>
+        <textarea id="descripcion_larga" name="descripcion_larga"></textarea>
+      </div>
+
+      <button type="submit" class="btn">Guardar equipo maestro</button>
+    </form>
+
+    <p class="tiny-note" style="margin-top:14px;">
+      El equipo maestro es la ficha técnica base. Luego podrás crear variantes comerciales reutilizables a partir de este equipo.
+    </p>
+  </section>
+
+  <section class="page-card">
+    <h2>Biblioteca de equipos</h2>
+
+    {% if equipos %}
+      <div class="lib-list">
+        {% for equipo in equipos %}
+          <div class="lib-card">
+            <strong>{{ equipo["nombre"] }}</strong>
+            <span>
+              {% if equipo["marca"] %}Marca: {{ equipo["marca"] }}{% endif %}
+              {% if equipo["modelo"] %} | Modelo: {{ equipo["modelo"] }}{% endif %}
+            </span>
+            <span>
+              {% if equipo["origen"] %}Origen: {{ equipo["origen"] }}{% endif %}
+              {% if equipo["garantia_base"] %} | Garantía: {{ equipo["garantia_base"] }}{% endif %}
+            </span>
+            {% if equipo["descripcion_breve"] %}
+              <span>{{ equipo["descripcion_breve"] }}</span>
+            {% endif %}
+            {% if equipo["imagen"] %}
+              <span>Imagen: {{ equipo["imagen"] }}</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="tiny-note">No hay equipos maestro cargados todavía.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
