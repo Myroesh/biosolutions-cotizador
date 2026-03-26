@@ -117,62 +117,70 @@
   <section class="page-card">
     <h2>Nueva plantilla / variante</h2>
 
-    <form method="post" action="/plantillas/nueva">
-      <div class="field">
-        <label for="equipo_id">Equipo maestro base *</label>
-        <select id="equipo_id" name="equipo_id" required>
-          <option value="">Selecciona un equipo</option>
-          {% for equipo in equipos %}
-            <option value="{{ equipo['id'] }}">
-              {{ equipo["nombre"] }}
-              {% if equipo["marca"] %} - {{ equipo["marca"] }}{% endif %}
-              {% if equipo["modelo"] %} {{ equipo["modelo"] }}{% endif %}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
+    <form method="post" action="/plantillas/nueva" id="plantillaForm">
+  <div class="field">
+    <label for="modo_creacion">Modo de creación *</label>
+    <select id="modo_creacion" name="modo_creacion" required onchange="toggleEquipoBaseField()">
+      <option value="vacia">Plantilla vacía</option>
+      <option value="desde_equipo">Crear desde equipo maestro</option>
+    </select>
+  </div>
 
-      <div class="field">
-        <label for="nombre_plantilla">Nombre de plantilla *</label>
-        <input type="text" id="nombre_plantilla" name="nombre_plantilla" required placeholder="Yonker 8000B pediátrico">
-      </div>
+  <div class="field" id="equipoBaseWrapper" style="display:none;">
+    <label for="equipo_id">Equipo maestro base</label>
+    <select id="equipo_id" name="equipo_id">
+      <option value="">Selecciona un equipo</option>
+      {% for equipo in equipos %}
+        <option value="{{ equipo['id'] }}">
+          {{ equipo["nombre"] }}
+          {% if equipo["marca"] %} - {{ equipo["marca"] }}{% endif %}
+          {% if equipo["modelo"] %} {{ equipo["modelo"] }}{% endif %}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
 
-      <div class="field">
-        <label for="nombre_comercial">Nombre comercial</label>
-        <input type="text" id="nombre_comercial" name="nombre_comercial" placeholder="Monitor de signos vitales Yonker 8000B con accesorios pediátricos">
-      </div>
+  <div class="field">
+    <label for="nombre_plantilla">Nombre de plantilla *</label>
+    <input type="text" id="nombre_plantilla" name="nombre_plantilla" required placeholder="Yonker 8000B pediátrico">
+  </div>
 
-      <div class="grid-2">
-        <div class="field">
-          <label for="precio_base">Precio base</label>
-          <input type="text" id="precio_base" name="precio_base" placeholder="10190.00">
-        </div>
+  <div class="field">
+    <label for="nombre_comercial">Nombre comercial</label>
+    <input type="text" id="nombre_comercial" name="nombre_comercial" placeholder="Monitor de signos vitales Yonker 8000B con accesorios pediátricos">
+  </div>
 
-        <div class="field">
-          <label style="display:flex; align-items:center; gap:8px; margin-top:30px;">
-            <input type="checkbox" name="mostrar_precio_por_defecto">
-            Mostrar precio por defecto
-          </label>
-        </div>
-      </div>
+  <div class="grid-2">
+    <div class="field">
+      <label for="precio_base">Precio base</label>
+      <input type="text" id="precio_base" name="precio_base" placeholder="10190.00">
+    </div>
 
-      <div class="field">
-        <label for="plantilla_imagen">Ruta de imagen</label>
-        <input type="text" id="plantilla_imagen" name="plantilla_imagen" placeholder="equipos/yonker-8000b.jpg">
-      </div>
+    <div class="field">
+      <label style="display:flex; align-items:center; gap:8px; margin-top:30px;">
+        <input type="checkbox" name="mostrar_precio_por_defecto">
+        Mostrar precio por defecto
+      </label>
+    </div>
+  </div>
 
-      <div class="field">
-        <label for="plantilla_descripcion_breve">Descripción breve</label>
-        <textarea id="plantilla_descripcion_breve" name="plantilla_descripcion_breve"></textarea>
-      </div>
+  <div class="field">
+    <label for="plantilla_imagen">Ruta de imagen</label>
+    <input type="text" id="plantilla_imagen" name="plantilla_imagen" placeholder="equipos/yonker-8000b.jpg">
+  </div>
 
-      <div class="field">
-        <label for="plantilla_descripcion_larga">Descripción larga</label>
-        <textarea id="plantilla_descripcion_larga" name="plantilla_descripcion_larga"></textarea>
-      </div>
+  <div class="field">
+    <label for="plantilla_descripcion_breve">Descripción breve</label>
+    <textarea id="plantilla_descripcion_breve" name="plantilla_descripcion_breve"></textarea>
+  </div>
 
-      <button type="submit" class="btn">Guardar plantilla / variante</button>
-    </form>
+  <div class="field">
+    <label for="plantilla_descripcion_larga">Descripción larga</label>
+    <textarea id="plantilla_descripcion_larga" name="plantilla_descripcion_larga"></textarea>
+  </div>
+
+  <button type="submit" class="btn">Guardar plantilla / variante</button>
+</form>
 
     <p class="tiny-note" style="margin-top:14px;">
       Aquí guardas variantes reutilizables por equipo: pediátrico, neonatal, marketing sin precio, full accesorios, etc.
@@ -207,4 +215,27 @@
     {% endif %}
   </section>
 </div>
+{% block scripts %}
+<script>
+  function toggleEquipoBaseField() {
+    const modo = document.getElementById("modo_creacion");
+    const wrapper = document.getElementById("equipoBaseWrapper");
+    const equipoSelect = document.getElementById("equipo_id");
+
+    if (!modo || !wrapper || !equipoSelect) return;
+
+    const usarEquipo = modo.value === "desde_equipo";
+
+    wrapper.style.display = usarEquipo ? "block" : "none";
+    equipoSelect.required = usarEquipo;
+
+    if (!usarEquipo) {
+      equipoSelect.value = "";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    toggleEquipoBaseField();
+  });
+</script>
 {% endblock %}

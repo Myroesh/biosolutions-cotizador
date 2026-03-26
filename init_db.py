@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS ventajas_equipo (
 
 CREATE TABLE IF NOT EXISTS plantillas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    equipo_id INTEGER NOT NULL,
+    equipo_id INTEGER,
     nombre_plantilla TEXT NOT NULL,
     nombre_comercial TEXT,
     descripcion_breve TEXT,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS plantillas (
     precio_base REAL DEFAULT 0,
     mostrar_precio_por_defecto INTEGER DEFAULT 0,
     activo INTEGER DEFAULT 1,
-    FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE CASCADE
+    FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS plantillas_accesorios (

@@ -30,6 +30,51 @@ def next_quote_number(conn):
 
     return f"COT-{last + 1:03d}"
 
+def build_initial_template_data_from_equipo(equipo_row):
+    """
+    Construye el snapshot inicial de una plantilla creada desde un equipo maestro.
+    Por ahora copiamos los campos base disponibles sin tocar todavía tablas hijas.
+    """
+    if not equipo_row:
+        return {
+            "nombre_comercial": "",
+            "descripcion_breve": "",
+            "descripcion_larga": "",
+            "imagen": ""
+        }
+
+    descripcion_breve = (equipo_row["descripcion_breve"] or "").strip()
+    descripcion_larga = (equipo_row["descripcion_larga"] or "").strip()
+
+    extras = []
+    if (equipo_row["origen"] or "").strip():
+        extras.append(f"Origen: {equipo_row['origen'].strip()}")
+    if (equipo_row["garantia_base"] or "").strip():
+        extras.append(f"Garantía base: {equipo_row['garantia_base'].strip()}")
+
+    if extras:
+        extras_text = "\n".join(extras)
+        if descripcion_larga:
+            descripcion_larga = f"{descripcion_larga}\n\n{extras_text}"
+        else:
+            descripcion_larga = extras_text
+
+    nombre_comercial_base = " ".join(
+        part for part in [
+            (equipo_row["nombre"] or "").strip(),
+            (equipo_row["marca"] or "").strip(),
+            (equipo_row["modelo"] or "").strip()
+        ]
+        if part
+    ).strip()
+
+    return {
+        "nombre_comercial": nombre_comercial_base,
+        "descripcion_breve": descripcion_breve,
+        "descripcion_larga": descripcion_larga,
+        "imagen": (equipo_row["imagen"] or "").strip()
+    }
+
 @app.route("/")
 def dashboard():
     return render_template("index.html", active_page="inicio")
@@ -340,10 +385,20 @@ def crear_plantilla():
     descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
     descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
     imagen = request.form.get("plantilla_imagen", "").strip()
+    precio_base = request.form.get("precio_base", "").stri@app.route("/plantillas/nueva", methods=["POST"])
+def crear_plantilla():
+    modo_creacion = request.form.get("modo_creacion", "vacia").strip()
+    equipo_id_raw = request.form.get("equipo_id", "").strip()
+
+    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
+    nombre_comercial = request.form.get("nombre_comercial", "").strip()
+    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
+    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
+    imagen = request.form.get("plantilla_imagen", "").strip()
     precio_base = request.form.get("precio_base", "").strip()
     mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
 
-    if not equipo_id or not nombre_plantilla:
+    if not nombre_plantilla:
         return redirect(url_for("plantillas_page"))
 
     try:
@@ -352,6 +407,45 @@ def crear_plantilla():
         precio_base_val = 0
 
     conn = get_db_connection()
+
+    equipo_id = None
+    equipo_base = None
+
+    if modo_creacion == "desde_equipo":
+        if not equipo_id_raw:
+            conn.close()
+            return redirect(url_for("plantillas_page"))
+
+        try:
+            equipo_id = int(equipo_id_raw)
+        except ValueError:
+            conn.close()
+            return redirect(url_for("plantillas_page"))
+
+        equipo_base = conn.execute("""
+            SELECT *
+            FROM equipos
+            WHERE id = ? AND activo = 1
+        """, (equipo_id,)).fetchone()
+
+        if not equipo_base:
+            conn.close()
+            return redirect(url_for("plantillas_page"))
+
+        snapshot = build_initial_template_data_from_equipo(equipo_base)
+
+        if not nombre_comercial:
+            nombre_comercial = snapshot["nombre_comercial"]
+
+        if not descripcion_breve:
+            descripcion_breve = snapshot["descripcion_breve"]
+
+        if not descripcion_larga:
+            descripcion_larga = snapshot["descripcion_larga"]
+
+        if not imagen:
+            imagen = snapshot["imagen"]
+
     conn.execute("""
         INSERT INTO plantillas (
             equipo_id,
