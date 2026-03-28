@@ -109,6 +109,79 @@
       grid-template-columns:1fr;
     }
   }
+  .edit-card{
+    margin-top:12px;
+    border-top:1px solid #dbe3ea;
+    padding-top:14px;
+  }
+
+  .edit-card details{
+    border:1px solid #dbe3ea;
+    border-radius:12px;
+    background:#fff;
+    overflow:hidden;
+  }
+
+  .edit-card summary{
+    cursor:pointer;
+    padding:12px 14px;
+    font-weight:700;
+    color:#0a4570;
+    background:#eef6fb;
+  }
+
+  .edit-card-body{
+    padding:14px;
+  }
+
+  .mini-grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .row-box{
+    border:1px dashed #cbd5e1;
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:8px;
+    background:#fff;
+  }
+
+  .row-box input,
+  .row-box textarea{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+    font-size:13px;
+    font-family:inherit;
+    margin-bottom:8px;
+    box-sizing:border-box;
+  }
+
+  .row-box textarea{
+    min-height:72px;
+    resize:vertical;
+  }
+
+  .inline-btns{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+
+  .btn-light{
+    background:#e2e8f0;
+    color:#0f172a;
+    border:none;
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
 </style>
 {% endblock %}
 
@@ -196,17 +269,171 @@
           <div class="lib-card">
             <strong>{{ p["nombre_plantilla"] }}</strong>
             <span>
-              Base: {{ p["equipo_nombre"] }}
-              {% if p["equipo_marca"] %} - {{ p["equipo_marca"] }}{% endif %}
-              {% if p["equipo_modelo"] %} {{ p["equipo_modelo"] }}{% endif %}
+              Base:
+              {% if p["equipo_nombre"] %}
+                {{ p["equipo_nombre"] }}
+                {% if p["equipo_marca"] %} - {{ p["equipo_marca"] }}{% endif %}
+                {% if p["equipo_modelo"] %} {{ p["equipo_modelo"] }}{% endif %}
+              {% else %}
+                Plantilla vacía / sin equipo base
+              {% endif %}
             </span>
+
             {% if p["nombre_comercial"] %}
               <span>Nombre comercial: {{ p["nombre_comercial"] }}</span>
             {% endif %}
+
             <span>
               Precio base: Bs. {{ p["precio_base"] or 0 }}
               {% if p["mostrar_precio_por_defecto"] %} | Mostrar precio: Sí{% else %} | Mostrar precio: No{% endif %}
             </span>
+
+            {% if p["descripcion_breve"] %}
+              <span>Descripción breve: {{ p["descripcion_breve"] }}</span>
+            {% endif %}
+
+            {% if p["descripcion_larga"] %}
+              <span>Descripción larga: {{ p["descripcion_larga"] }}</span>
+            {% endif %}
+
+            {% if p["especificaciones"] %}
+              <span><strong style="display:inline; color:#0a4570;">Especificaciones:</strong></span>
+              {% for s in p["especificaciones"] %}
+                <span>- {{ s["parametro"] }}: {{ s["detalle"] }}</span>
+              {% endfor %}
+            {% endif %}
+
+            {% if p["usos"] %}
+              <span><strong style="display:inline; color:#0a4570;">Usos:</strong></span>
+              {% for u in p["usos"] %}
+                <span>- {{ u["texto"] }}</span>
+              {% endfor %}
+            {% endif %}
+
+            {% if p["accesorios"] %}
+              <span><strong style="display:inline; color:#0a4570;">Accesorios:</strong></span>
+              {% for a in p["accesorios"] %}
+                <span>- {{ a["texto"] }}</span>
+              {% endfor %}
+            {% endif %}
+
+            {% if p["ventajas"] %}
+              <span><strong style="display:inline; color:#0a4570;">Ventajas:</strong></span>
+              {% for v in p["ventajas"] %}
+                <span>- {{ v["texto"] }}</span>
+              {% endfor %}
+            {% endif %}
+
+            <div class="edit-card">
+              <details>
+                <summary>Editar plantilla</summary>
+                <div class="edit-card-body">
+                  <form method="post" action="{{ url_for('editar_plantilla', plantilla_id=p['id']) }}">
+                    <div class="field">
+                      <label>Nombre de plantilla *</label>
+                      <input type="text" name="nombre_plantilla" value="{{ p['nombre_plantilla'] or '' }}" required>
+                    </div>
+
+                    <div class="field">
+                      <label>Nombre comercial</label>
+                      <input type="text" name="nombre_comercial" value="{{ p['nombre_comercial'] or '' }}">
+                    </div>
+
+                    <div class="mini-grid-2">
+                      <div class="field">
+                        <label>Precio base</label>
+                        <input type="text" name="precio_base" value="{{ p['precio_base'] or 0 }}">
+                      </div>
+
+                      <div class="field">
+                        <label style="display:flex; align-items:center; gap:8px; margin-top:30px;">
+                          <input type="checkbox" name="mostrar_precio_por_defecto" {% if p["mostrar_precio_por_defecto"] %}checked{% endif %}>
+                          Mostrar precio por defecto
+                        </label>
+                      </div>
+                    </div>
+
+                    <div class="field">
+                      <label>Ruta de imagen</label>
+                      <input type="text" name="plantilla_imagen" value="{{ p['imagen'] or '' }}">
+                    </div>
+
+                    <div class="field">
+                      <label>Descripción breve</label>
+                      <textarea name="plantilla_descripcion_breve">{{ p["descripcion_breve"] or "" }}</textarea>
+                    </div>
+
+                    <div class="field">
+                      <label>Descripción larga</label>
+                      <textarea name="plantilla_descripcion_larga">{{ p["descripcion_larga"] or "" }}</textarea>
+                    </div>
+
+                    <div class="field">
+                      <label>Especificaciones</label>
+                      <div class="inline-btns">
+                        <button type="button" class="btn-light" onclick="addSpecRow(this)">+ Agregar especificación</button>
+                      </div>
+                      <div class="specs-editor">
+                        {% for s in p["especificaciones"] %}
+                          <div class="row-box spec-row">
+                            <input type="text" name="spec_parametro[]" placeholder="Parámetro" value="{{ s['parametro'] or '' }}">
+                            <textarea name="spec_detalle[]" placeholder="Detalle">{{ s["detalle"] or "" }}</textarea>
+                            <button type="button" class="btn-light" onclick="removeRow(this)">Eliminar</button>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+
+                    <div class="field">
+                      <label>Usos</label>
+                      <div class="inline-btns">
+                        <button type="button" class="btn-light" onclick="addSimpleRow(this, 'uso_texto[]', 'Nuevo uso')">+ Agregar uso</button>
+                      </div>
+                      <div class="simple-editor">
+                        {% for u in p["usos"] %}
+                          <div class="row-box simple-row">
+                            <input type="text" name="uso_texto[]" value="{{ u['texto'] or '' }}">
+                            <button type="button" class="btn-light" onclick="removeRow(this)">Eliminar</button>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+
+                    <div class="field">
+                      <label>Accesorios</label>
+                      <div class="inline-btns">
+                        <button type="button" class="btn-light" onclick="addSimpleRow(this, 'accesorio_texto[]', 'Nuevo accesorio')">+ Agregar accesorio</button>
+                      </div>
+                      <div class="simple-editor">
+                        {% for a in p["accesorios"] %}
+                          <div class="row-box simple-row">
+                            <input type="text" name="accesorio_texto[]" value="{{ a['texto'] or '' }}">
+                            <button type="button" class="btn-light" onclick="removeRow(this)">Eliminar</button>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+
+                    <div class="field">
+                      <label>Ventajas</label>
+                      <div class="inline-btns">
+                        <button type="button" class="btn-light" onclick="addSimpleRow(this, 'ventaja_texto[]', 'Nueva ventaja')">+ Agregar ventaja</button>
+                      </div>
+                      <div class="simple-editor">
+                        {% for v in p["ventajas"] %}
+                          <div class="row-box simple-row">
+                            <input type="text" name="ventaja_texto[]" value="{{ v['texto'] or '' }}">
+                            <button type="button" class="btn-light" onclick="removeRow(this)">Eliminar</button>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn">Guardar cambios</button>
+                  </form>
+                </div>
+              </details>
+            </div>
           </div>
         {% endfor %}
       </div>
@@ -234,6 +461,38 @@
     if (!usarEquipo) {
       equipoSelect.value = "";
     }
+  }
+
+  function removeRow(button) {
+    const row = button.closest(".row-box");
+    if (row) row.remove();
+  }
+
+  function addSpecRow(button) {
+    const editor = button.closest(".field").querySelector(".specs-editor");
+    if (!editor) return;
+
+    const div = document.createElement("div");
+    div.className = "row-box spec-row";
+    div.innerHTML = `
+      <input type="text" name="spec_parametro[]" placeholder="Parámetro">
+      <textarea name="spec_detalle[]" placeholder="Detalle"></textarea>
+      <button type="button" class="btn-light" onclick="removeRow(this)">Eliminar</button>
+    `;
+    editor.appendChild(div);
+  }
+
+  function addSimpleRow(button, inputName, placeholderText) {
+    const editor = button.closest(".field").querySelector(".simple-editor");
+    if (!editor) return;
+
+    const div = document.createElement("div");
+    div.className = "row-box simple-row";
+    div.innerHTML = `
+      <input type="text" name="${inputName}" placeholder="${placeholderText}">
+      <button type="button" class="btn-light" onclick="removeRow(this)">Eliminar</button>
+    `;
+    editor.appendChild(div);
   }
 
   document.addEventListener("DOMContentLoaded", () => {

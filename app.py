@@ -78,6 +78,97 @@ def build_initial_template_data_from_equipo(equipo_row):
         "imagen": (equipo_row["imagen"] or "").strip()
     }
 
+def get_plantilla_children(conn, plantilla_id):
+    especificaciones = conn.execute("""
+        SELECT id, parametro, detalle, orden
+        FROM plantillas_especificaciones
+        WHERE plantilla_id = ?
+        ORDER BY orden ASC, id ASC
+    """, (plantilla_id,)).fetchall()
+
+    usos = conn.execute("""
+        SELECT id, texto, orden
+        FROM plantillas_usos
+        WHERE plantilla_id = ?
+        ORDER BY orden ASC, id ASC
+    """, (plantilla_id,)).fetchall()
+
+    accesorios = conn.execute("""
+        SELECT id, texto, orden
+        FROM plantillas_accesorios
+        WHERE plantilla_id = ?
+        ORDER BY orden ASC, id ASC
+    """, (plantilla_id,)).fetchall()
+
+    ventajas = conn.execute("""
+        SELECT id, texto, orden
+        FROM plantillas_ventajas
+        WHERE plantilla_id = ?
+        ORDER BY orden ASC, id ASC
+    """, (plantilla_id,)).fetchall()
+
+    return {
+        "especificaciones": especificaciones,
+        "usos": usos,
+        "accesorios": accesorios,
+        "ventajas": ventajas,
+    }
+
+
+def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, ventajas):
+    conn.execute("DELETE FROM plantillas_especificaciones WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_usos WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_accesorios WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_ventajas WHERE plantilla_id = ?", (plantilla_id,))
+
+    for idx, row in enumerate(specs):
+        parametro = (row.get("parametro") or "").strip()
+        detalle = (row.get("detalle") or "").strip()
+        if not parametro and not detalle:
+            continue
+
+        conn.execute("""
+            INSERT INTO plantillas_especificaciones (
+                plantilla_id, parametro, detalle, orden
+            )
+            VALUES (?, ?, ?, ?)
+        """, (plantilla_id, parametro, detalle, idx))
+
+    for idx, texto in enumerate(usos):
+        texto = (texto or "").strip()
+        if not texto:
+            continue
+
+        conn.execute("""
+            INSERT INTO plantillas_usos (
+                plantilla_id, texto, orden
+            )
+            VALUES (?, ?, ?)
+        """, (plantilla_id, texto, idx))
+
+    for idx, texto in enumerate(accesorios):
+        texto = (texto or "").strip()
+        if not texto:
+            continue
+
+        conn.execute("""
+            INSERT INTO plantillas_accesorios (
+                plantilla_id, texto, orden
+            )
+            VALUES (?, ?, ?)
+        """, (plantilla_id, texto, idx))
+
+    for idx, texto in enumerate(ventajas):
+        texto = (texto or "").strip()
+        if not texto:
+            continue
+
+        conn.execute("""
+            INSERT INTO plantillas_ventajas (
+                plantilla_id, texto, orden
+            )
+            VALUES (?, ?, ?)
+        """, (plantilla_id, texto, idx))
 
 @app.route("/")
 def dashboard():
@@ -149,7 +240,7 @@ def plantillas_page():
         ORDER BY id DESC
     """).fetchall()
 
-    plantillas = conn.execute("""
+    plantillas_rows = conn.execute("""
         SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
         FROM plantillas p
         LEFT JOIN equipos e ON e.id = p.equipo_id
@@ -157,7 +248,19 @@ def plantillas_page():
         ORDER BY p.id DESC
     """).fetchall()
 
+    plantillas = []
+    for p in plantillas_rows:
+        children = get_plantilla_children(conn, p["id"])
+
+        plantilla_dict = dict(p)
+        plantilla_dict["especificaciones"] = [dict(x) for x in children["especificaciones"]]
+        plantilla_dict["usos"] = [dict(x) for x in children["usos"]]
+        plantilla_dict["accesorios"] = [dict(x) for x in children["accesorios"]]
+        plantilla_dict["ventajas"] = [dict(x) for x in children["ventajas"]]
+        plantillas.append(plantilla_dict)
+
     conn.close()
+
     return render_template(
         "plantillas.html",
         equipos=equipos,
@@ -483,6 +586,85 @@ def crear_plantilla():
 
     return redirect(url_for("plantillas_page"))
 
+@app.route("/plantillas/<int:plantilla_id>/editar", methods=["POST"])
+def editar_plantilla(plantilla_id):
+    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
+    nombre_comercial = request.form.get("nombre_comercial", "").strip()
+    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
+    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
+    imagen = request.form.get("plantilla_imagen", "").strip()
+    precio_base = request.form.get("precio_base", "").strip()
+    mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
+
+    if not nombre_plantilla:
+        return redirect(url_for("plantillas_page"))
+
+    try:
+        precio_base_val = float(precio_base) if precio_base else 0
+    except ValueError:
+        precio_base_val = 0
+
+    spec_parametros = request.form.getlist("spec_parametro[]")
+    spec_detalles = request.form.getlist("spec_detalle[]")
+
+    specs = []
+    max_specs = max(len(spec_parametros), len(spec_detalles))
+    for i in range(max_specs):
+        specs.append({
+            "parametro": spec_parametros[i] if i < len(spec_parametros) else "",
+            "detalle": spec_detalles[i] if i < len(spec_detalles) else "",
+        })
+
+    usos = request.form.getlist("uso_texto[]")
+    accesorios = request.form.getlist("accesorio_texto[]")
+    ventajas = request.form.getlist("ventaja_texto[]")
+
+    conn = get_db_connection()
+
+    plantilla = conn.execute("""
+        SELECT id
+        FROM plantillas
+        WHERE id = ? AND activo = 1
+    """, (plantilla_id,)).fetchone()
+
+    if not plantilla:
+        conn.close()
+        return redirect(url_for("plantillas_page"))
+
+    conn.execute("""
+        UPDATE plantillas
+        SET nombre_plantilla = ?,
+            nombre_comercial = ?,
+            descripcion_breve = ?,
+            descripcion_larga = ?,
+            imagen = ?,
+            precio_base = ?,
+            mostrar_precio_por_defecto = ?
+        WHERE id = ?
+    """, (
+        nombre_plantilla,
+        nombre_comercial,
+        descripcion_breve,
+        descripcion_larga,
+        imagen,
+        precio_base_val,
+        mostrar_precio,
+        plantilla_id
+    ))
+
+    replace_plantilla_children(
+        conn,
+        plantilla_id,
+        specs=specs,
+        usos=usos,
+        accesorios=accesorios,
+        ventajas=ventajas
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("plantillas_page"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=True)
