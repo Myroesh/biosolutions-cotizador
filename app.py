@@ -1,13 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+)guardar_cotizacion()from flask import Flask, render_template, request, redirect, url_for, jsonify
 import sqlite3
 from datetime import date
 
 app = Flask(__name__)
 DB_PATH = "biosolutions.db"
 
-
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -350,125 +349,138 @@ def cotizacion_json(cotizacion_id):
 
 
 @app.route("/cotizaciones/guardar", methods=["POST"])
+@app.route("/cotizaciones/guardar", methods=["POST"])
 def guardar_cotizacion():
-    data = request.get_json(force=True)
-    print("=== GUARDAR COTIZACION ===")
-    print(data)
+    conn = None
+    try:
+        data = request.get_json(force=True)
+        print("=== GUARDAR COTIZACION ===")
+        print(data)
 
-    quotation = data.get("quotation", {})
-    items = data.get("items", [])
+        quotation = data.get("quotation", {})
+        items = data.get("items", [])
 
-    numero = (quotation.get("number") or "").strip()
-    fecha = (quotation.get("date") or "").strip()
-    cliente = (quotation.get("client") or "").strip()
-    atencion = (quotation.get("attention") or "").strip()
-    ciudad = (quotation.get("city") or "").strip()
-    validez = (quotation.get("validity") or "").strip()
-    forma_pago = (quotation.get("paymentTerms") or "").strip()
-    observaciones = (quotation.get("notes") or "").strip()
-    db_id = quotation.get("dbId")
+        numero = (quotation.get("number") or "").strip()
+        fecha = (quotation.get("date") or "").strip()
+        cliente = (quotation.get("client") or "").strip()
+        atencion = (quotation.get("attention") or "").strip()
+        ciudad = (quotation.get("city") or "").strip()
+        validez = (quotation.get("validity") or "").strip()
+        forma_pago = (quotation.get("paymentTerms") or "").strip()
+        observaciones = (quotation.get("notes") or "").strip()
+        db_id = quotation.get("dbId")
 
-    total = 0
-    for item in items:
-        try:
-            precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
-        except ValueError:
-            precio = 0
-        try:
-            cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
-        except ValueError:
-            cantidad = 1
-        total += precio * cantidad
+        total = 0
+        for item in items:
+            try:
+                precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
+            except ValueError:
+                precio = 0
+            try:
+                cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
+            except ValueError:
+                cantidad = 1
+            total += precio * cantidad
 
-    conn = get_db_connection()
+        conn = get_db_connection()
 
-    if db_id:
-        conn.execute("""
-            UPDATE cotizaciones
-            SET numero = ?, fecha = ?, cliente = ?, atencion = ?, ciudad = ?,
-                validez = ?, forma_pago = ?, observaciones = ?, total = ?
-            WHERE id = ?
-        """, (
-            numero, fecha, cliente, atencion, ciudad,
-            validez, forma_pago, observaciones, total, db_id
-        ))
-        cotizacion_id = db_id
-
-        conn.execute("DELETE FROM cotizacion_items WHERE cotizacion_id = ?", (cotizacion_id,))
-    else:
-        if not numero:
-            numero = next_quote_number(conn)
-
-        cur = conn.execute("""
-            INSERT INTO cotizaciones (
+        if db_id:
+            conn.execute("""
+                UPDATE cotizaciones
+                SET numero = ?, fecha = ?, cliente = ?, atencion = ?, ciudad = ?,
+                    validez = ?, forma_pago = ?, observaciones = ?, total = ?
+                WHERE id = ?
+            """, (
                 numero, fecha, cliente, atencion, ciudad,
-                validez, forma_pago, observaciones, total, estado
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador')
-        """, (
-            numero, fecha, cliente, atencion, ciudad,
-            validez, forma_pago, observaciones, total
-        ))
-        cotizacion_id = cur.lastrowid
+                validez, forma_pago, observaciones, total, db_id
+            ))
+            cotizacion_id = db_id
 
-    for idx, item in enumerate(items):
-        try:
-            precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
-        except ValueError:
-            precio = 0
+            conn.execute("DELETE FROM cotizacion_items WHERE cotizacion_id = ?", (cotizacion_id,))
+        else:
+            if not numero:
+                numero = next_quote_number(conn)
 
-        try:
-            cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
-        except ValueError:
-            cantidad = 1
+            cur = conn.execute("""
+                INSERT INTO cotizaciones (
+                    numero, fecha, cliente, atencion, ciudad,
+                    validez, forma_pago, observaciones, total, estado
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador')
+            """, (
+                numero, fecha, cliente, atencion, ciudad,
+                validez, forma_pago, observaciones, total
+            ))
+            cotizacion_id = cur.lastrowid
 
-        imagen = (item.get("imageSrc") or "").strip()
-        if imagen.startswith("/static/"):
-            imagen = imagen.replace("/static/", "", 1)
+        for idx, item in enumerate(items):
+            try:
+                precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
+            except ValueError:
+                precio = 0
 
-        conn.execute("""
-            INSERT INTO cotizacion_items (
+            try:
+                cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
+            except ValueError:
+                cantidad = 1
+
+            imagen = (item.get("imageSrc") or "").strip()
+            if imagen.startswith("/static/"):
+                imagen = imagen.replace("/static/", "", 1)
+
+            conn.execute("""
+                INSERT INTO cotizacion_items (
+                    cotizacion_id,
+                    plantilla_id,
+                    nombre_editado,
+                    marca_editada,
+                    modelo_editado,
+                    precio_unitario,
+                    cantidad,
+                    mostrar_precio,
+                    descripcion_breve_editada,
+                    descripcion_larga_editada,
+                    imagen_editada,
+                    orden
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
                 cotizacion_id,
-                plantilla_id,
-                nombre_editado,
-                marca_editada,
-                modelo_editado,
-                precio_unitario,
+                item.get("templateId"),
+                (item.get("title") or "").strip(),
+                (item.get("brand") or "").strip(),
+                (item.get("model") or "").strip(),
+                precio,
                 cantidad,
-                mostrar_precio,
-                descripcion_breve_editada,
-                descripcion_larga_editada,
-                imagen_editada,
-                orden
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            cotizacion_id,
-            item.get("templateId"),
-            (item.get("title") or "").strip(),
-            (item.get("brand") or "").strip(),
-            (item.get("model") or "").strip(),
-            precio,
-            cantidad,
-            1 if item.get("showPrice") else 0,
-            (item.get("subtitle") or "").strip(),
-            (item.get("descriptionLong") or "").strip(),
-            imagen,
-            idx
-        ))
+                1 if item.get("showPrice") else 0,
+                (item.get("subtitle") or "").strip(),
+                (item.get("descriptionLong") or "").strip(),
+                imagen,
+                idx
+            ))
 
-    conn.commit()
-    conn.close()
-    print("Cotización guardada con ID:", cotizacion_id)
-    print("Número:", numero)
-    print("Total:", total)
+        conn.commit()
 
-    return jsonify({
-        "ok": True,
-        "cotizacion_id": cotizacion_id,
-        "numero": numero,
-        "total": total
-    })
+        print("Cotización guardada con ID:", cotizacion_id)
+        print("Número:", numero)
+        print("Total:", total)
+
+        return jsonify({
+            "ok": True,
+            "cotizacion_id": cotizacion_id,
+            "numero": numero,
+            "total": total
+        })
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print("ERROR GUARDANDO COTIZACION:", e)
+        raise
+
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route("/equipos/nuevo", methods=["POST"])

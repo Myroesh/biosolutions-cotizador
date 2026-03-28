@@ -1,0 +1,1 @@
+ALTER TABLE cotizacion_items ADD COLUMN plantilla_id INTEGER;
