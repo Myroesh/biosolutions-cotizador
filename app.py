@@ -352,7 +352,8 @@ def cotizacion_json(cotizacion_id):
 @app.route("/cotizaciones/guardar", methods=["POST"])
 def guardar_cotizacion():
     data = request.get_json(force=True)
-
+    print("=== GUARDAR COTIZACION ===")
+    print(data)
     quotation = data.get("quotation", {})
     items = data.get("items", [])
 
@@ -458,12 +459,22 @@ def guardar_cotizacion():
     conn.commit()
     conn.close()
 
+    conn.commit()
+    conn.close()
+
+    print("=== GUARDAR COTIZACION ===")
+    print(data)
+    print("Cotización guardada con ID:", cotizacion_id)
+    print("Número:", numero)
+    print("Total:", total)
+
     return jsonify({
         "ok": True,
         "cotizacion_id": cotizacion_id,
         "numero": numero,
         "total": total
     })
+
 
 
 @app.route("/equipos/nuevo", methods=["POST"])
