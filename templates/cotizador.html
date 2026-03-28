@@ -20,6 +20,107 @@
     line-height:1.6;
     margin-top:8px;
   }
+
+  .continuation-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#eef6fb;
+    color:#0a4570;
+    font-size:12px;
+    font-weight:700;
+    margin-top:8px;
+  }
+
+  .doc-chip .value.is-continuation{
+    color:#0a4570;
+  }
+
+  .preview-page.is-continuation .title-card{
+    border-top:3px solid #0a4570;
+  }
+
+  @page {
+    size: Letter;
+    margin: 12mm;
+  }
+
+  @media print {
+    html, body {
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+
+    .app-shell,
+    .sidebar,
+    .brand-box,
+    .panel,
+    .button-group,
+    .inline-actions,
+    #itemsList,
+    #highlightsEditor,
+    #specsEditor,
+    #usesEditor,
+    #accessoriesEditor,
+    #advantagesEditor {
+      display: none !important;
+    }
+
+    .preview-area {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    #previewPages {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .preview-page {
+      width: 190mm !important;
+      min-height: 254mm !important;
+      margin: 0 auto !important;
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+      box-shadow: none !important;
+    }
+
+    .preview-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .card,
+    .title-card,
+    .quote-summary,
+    .footer-box,
+    .meta,
+    .image-box,
+    .spec-table,
+    .badge-row,
+    .clean {
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+    }
+
+    .spec-table thead {
+      display: table-header-group;
+    }
+
+    .spec-table tr,
+    .clean li,
+    .badge-row .badge {
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+    }
+  }
 </style>
 {% endblock %}
 

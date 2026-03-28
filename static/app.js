@@ -368,22 +368,177 @@ function renderEditors() {
   renderSimpleListEditor("accessoriesEditor", item ? item.accessories : [], "accessories");
   renderSimpleListEditor("advantagesEditor", item ? item.advantages : [], "advantages");
 }
+function chunkArray(arr, size) {
+  if (!Array.isArray(arr) || !arr.length) return [];
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
 
-function buildItemPage(item) {
+function splitLongText(text, maxChars = 1200) {
+  const clean = String(text || "").trim();
+  if (!clean) return [];
+
+  if (clean.length <= maxChars) {
+    return [clean];
+  }
+
+  const parts = [];
+  let start = 0;
+
+  while (start < clean.length) {
+    let end = Math.min(start + maxChars, clean.length);
+
+    if (end < clean.length) {
+      const lastBreak = Math.max(
+        clean.lastIndexOf("\n", end),
+        clean.lastIndexOf(". ", end),
+        clean.lastIndexOf("; ", end),
+        clean.lastIndexOf(", ", end),
+        clean.lastIndexOf(" ", end)
+      );
+
+      if (lastBreak > start + 300) {
+        end = lastBreak + 1;
+      }
+    }
+
+    parts.push(clean.slice(start, end).trim());
+    start = end;
+  }
+
+  return parts.filter(Boolean);
+}
+
+function buildHeaderMetaGrid(item, qty, subtotal, showSubtotal = true) {
+  return `
+    <div class="meta-grid">
+      <div class="meta"><span class="k">Marca</span><span class="v">${escapeHtml(item.brand || "")}</span></div>
+      <div class="meta"><span class="k">Modelo</span><span class="v">${escapeHtml(item.model || "")}</span></div>
+      <div class="meta"><span class="k">Origen</span><span class="v">${escapeHtml(item.origin || "")}</span></div>
+      <div class="meta"><span class="k">Garantía</span><span class="v">${escapeHtml(item.warranty || "")}</span></div>
+    </div>
+
+    <div class="meta-grid" style="margin-top:12px;">
+      <div class="meta"><span class="k">Cantidad</span><span class="v">${escapeHtml(qty)}</span></div>
+      ${item.showPrice ? `<div class="meta"><span class="k">Precio unitario</span><span class="v">${escapeHtml(formatPrice(item.price))}</span></div>` : `<div class="meta"><span class="k">Precio unitario</span><span class="v">No visible</span></div>`}
+      ${showSubtotal ? `<div class="meta"><span class="k">Subtotal</span><span class="v">Bs. ${subtotal}</span></div>` : `<div class="meta"><span class="k">Documento</span><span class="v">Continuación</span></div>`}
+    </div>
+  `;
+}
+
+function buildDescriptionCard(descriptionPart, highlightsChunk) {
+  if (!descriptionPart && !highlightsChunk.length) return "";
+
+  return `
+    <div class="card">
+      ${descriptionPart ? `
+        <h3 class="section-title">Descripción del equipo</h3>
+        <p class="preview-text">${nl2br(descriptionPart)}</p>
+      ` : ""}
+
+      ${highlightsChunk.length ? `
+        <h3 class="section-title">Características destacadas</h3>
+        <ul class="clean">
+          ${highlightsChunk.map(h => `<li>${escapeHtml(h)}</li>`).join("")}
+        </ul>
+      ` : ""}
+    </div>
+  `;
+}
+
+function buildSpecsCard(specsChunk) {
+  if (!specsChunk.length) return "";
+
+  return `
+    <div class="card">
+      <h3 class="section-title">Especificaciones técnicas</h3>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th style="width:38%">Parámetro</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${specsChunk.map(s => `
+            <tr>
+              <td>${escapeHtml(s.param || s.parametro || "")}</td>
+              <td>${nl2br(s.value || s.detalle || "")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function buildImageAndListsCard(item, usesChunk, accessoriesChunk, advantagesChunk, showImage = true) {
+  if (!showImage && !usesChunk.length && !accessoriesChunk.length && !advantagesChunk.length) return "";
+
+  return `
+    <div class="card">
+      ${showImage ? `
+        <h3 class="section-title">Imagen del equipo</h3>
+        <div class="image-box">
+          ${item.imageSrc
+            ? `<img src="${item.imageSrc}" alt="${escapeHtml(item.title || "")}">`
+            : `Sin imagen`
+          }
+        </div>
+      ` : ""}
+
+      ${usesChunk.length ? `
+        <h3 class="section-title" style="margin-top:16px;">Aplicaciones / usos</h3>
+        <div class="badge-row">
+          ${usesChunk.map(u => `<span class="badge">${escapeHtml(u)}</span>`).join("")}
+        </div>
+      ` : ""}
+
+      ${accessoriesChunk.length ? `
+        <h3 class="section-title" style="margin-top:16px;">Contenido / accesorios</h3>
+        <ul class="clean">
+          ${accessoriesChunk.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
+        </ul>
+      ` : ""}
+
+      ${advantagesChunk.length ? `
+        <h3 class="section-title" style="margin-top:16px;">Ventajas principales</h3>
+        <ul class="clean">
+          ${advantagesChunk.map(v => `<li>${escapeHtml(v)}</li>`).join("")}
+        </ul>
+      ` : ""}
+    </div>
+  `;
+}
+
+function buildItemPageFrame(item, options = {}) {
   const qty = item.quantity || "1";
   const subtotal = ((parseFloat(item.price || 0) || 0) * (parseFloat(qty || 1) || 1)).toFixed(2);
 
+  const continuation = !!options.continuation;
+  const continuationIndex = options.continuationIndex || 1;
+  const topLeftHtml = options.topLeftHtml || "";
+  const topRightHtml = options.topRightHtml || "";
+  const bottomLeftHtml = options.bottomLeftHtml || "";
+  const bottomRightHtml = options.bottomRightHtml || "";
+
   return `
-    <section class="preview-page">
+    <section class="preview-page ${continuation ? "is-continuation" : ""}">
       <div class="left-band"></div>
       <div class="preview-content">
         <section class="preview-hero">
           <div>
             <img src="/static/logo_biosolutions.png" alt="BioSolutions" class="preview-logo" />
+            ${continuation ? `<div class="continuation-chip">Continuación · Página interna ${continuationIndex}</div>` : ""}
           </div>
           <div class="doc-chip">
             <span class="label">Documento</span>
-            <span class="value">Ficha técnica</span>
+            <span class="value ${continuation ? "is-continuation" : ""}">
+              ${continuation ? "Continuación de ficha" : "Ficha técnica"}
+            </span>
           </div>
         </section>
 
@@ -391,92 +546,77 @@ function buildItemPage(item) {
           <span class="eyebrow">Equipo médico / laboratorio</span>
           <h1 class="doc-title">${escapeHtml(item.title || "")}</h1>
           <p class="subtitle">${escapeHtml(item.subtitle || "")}</p>
-
-          <div class="meta-grid">
-            <div class="meta"><span class="k">Marca</span><span class="v">${escapeHtml(item.brand || "")}</span></div>
-            <div class="meta"><span class="k">Modelo</span><span class="v">${escapeHtml(item.model || "")}</span></div>
-            <div class="meta"><span class="k">Origen</span><span class="v">${escapeHtml(item.origin || "")}</span></div>
-            <div class="meta"><span class="k">Garantía</span><span class="v">${escapeHtml(item.warranty || "")}</span></div>
-          </div>
-
-          <div class="meta-grid" style="margin-top:12px;">
-            <div class="meta"><span class="k">Cantidad</span><span class="v">${escapeHtml(qty)}</span></div>
-            ${item.showPrice ? `<div class="meta"><span class="k">Precio unitario</span><span class="v">${escapeHtml(formatPrice(item.price))}</span></div>` : `<div class="meta"><span class="k">Precio unitario</span><span class="v">No visible</span></div>`}
-            <div class="meta"><span class="k">Subtotal</span><span class="v">Bs. ${subtotal}</span></div>
-          </div>
+          ${buildHeaderMetaGrid(item, qty, subtotal, !continuation)}
         </section>
 
         <section class="main-grid">
-          <div>
-            <div class="card">
-              <h3 class="section-title">Descripción del equipo</h3>
-              <p class="preview-text">${escapeHtml(item.descriptionLong || "")}</p>
-
-              ${item.highlights.length ? `
-                <h3 class="section-title">Características destacadas</h3>
-                <ul class="clean">
-                  ${item.highlights.map(h => `<li>${escapeHtml(h)}</li>`).join("")}
-                </ul>
-              ` : ""}
-
-              ${item.specs.length ? `
-                <h3 class="section-title">Especificaciones técnicas</h3>
-                <table class="spec-table">
-                  <thead>
-                    <tr>
-                      <th style="width:38%">Parámetro</th>
-                      <th>Detalle</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${item.specs.map(s => `
-                      <tr>
-                        <td>${escapeHtml(s.param || "")}</td>
-                        <td>${nl2br(s.value || "")}</td>
-                      </tr>
-                    `).join("")}
-                  </tbody>
-                </table>
-              ` : ""}
-            </div>
-          </div>
-
-          <div>
-            <div class="card">
-              <h3 class="section-title">Imagen del equipo</h3>
-              <div class="image-box">
-                ${item.imageSrc
-                  ? `<img src="${item.imageSrc}" alt="${escapeHtml(item.title || "")}">`
-                  : `Sin imagen`
-                }
-              </div>
-
-              ${item.uses.length ? `
-                <h3 class="section-title" style="margin-top:16px;">Aplicaciones / usos</h3>
-                <div class="badge-row">
-                  ${item.uses.map(u => `<span class="badge">${escapeHtml(u)}</span>`).join("")}
-                </div>
-              ` : ""}
-
-              ${item.accessories.length ? `
-                <h3 class="section-title" style="margin-top:16px;">Contenido / accesorios</h3>
-                <ul class="clean">
-                  ${item.accessories.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
-                </ul>
-              ` : ""}
-
-              ${item.advantages.length ? `
-                <h3 class="section-title" style="margin-top:16px;">Ventajas principales</h3>
-                <ul class="clean">
-                  ${item.advantages.map(v => `<li>${escapeHtml(v)}</li>`).join("")}
-                </ul>
-              ` : ""}
-            </div>
-          </div>
+          <div>${topLeftHtml}${bottomLeftHtml}</div>
+          <div>${topRightHtml}${bottomRightHtml}</div>
         </section>
       </div>
     </section>
   `;
+}
+
+function buildItemPages(item) {
+  const descriptionParts = splitLongText(item.descriptionLong || "", 1350);
+  const highlightsChunks = chunkArray(item.highlights || [], 8);
+  const specsChunks = chunkArray(item.specs || [], 10);
+  const usesChunks = chunkArray(item.uses || [], 10);
+  const accessoriesChunks = chunkArray(item.accessories || [], 10);
+  const advantagesChunks = chunkArray(item.advantages || [], 10);
+
+  const pages = [];
+  let pageIndex = 0;
+
+  const maxPages = Math.max(
+    1,
+    descriptionParts.length,
+    highlightsChunks.length,
+    specsChunks.length,
+    usesChunks.length,
+    accessoriesChunks.length,
+    advantagesChunks.length
+  );
+
+  for (let i = 0; i < maxPages; i++) {
+    const descriptionPart = descriptionParts[i] || "";
+    const highlightsChunk = highlightsChunks[i] || [];
+    const specsChunk = specsChunks[i] || [];
+    const usesChunk = usesChunks[i] || [];
+    const accessoriesChunk = accessoriesChunks[i] || [];
+    const advantagesChunk = advantagesChunks[i] || [];
+
+    const isContinuation = i > 0;
+
+    const leftTop = buildDescriptionCard(descriptionPart, highlightsChunk);
+    const leftBottom = buildSpecsCard(specsChunk);
+    const rightTop = buildImageAndListsCard(
+      item,
+      usesChunk,
+      accessoriesChunk,
+      advantagesChunk,
+      i === 0
+    );
+
+    pages.push(
+      buildItemPageFrame(item, {
+        continuation: isContinuation,
+        continuationIndex: i + 1,
+        topLeftHtml: leftTop,
+        topRightHtml: rightTop,
+        bottomLeftHtml: leftBottom,
+        bottomRightHtml: ""
+      })
+    );
+
+    pageIndex++;
+  }
+
+  return pages;
+}
+function buildItemPage(item) {
+  return buildItemPages(item).join("");
 }
 
 function buildTotalPage() {
@@ -583,7 +723,7 @@ function renderPreview() {
   const preview = document.getElementById("previewPages");
   if (!preview) return;
 
-  const itemPages = appState.items.map(buildItemPage).join("");
+  const itemPages = appState.items.flatMap(item => buildItemPages(item)).join("");
   preview.innerHTML = itemPages + buildTotalPage();
 }
 

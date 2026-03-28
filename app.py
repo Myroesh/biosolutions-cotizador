@@ -348,7 +348,7 @@ def cotizacion_json(cotizacion_id):
     return jsonify(payload)
 
 
-@app.route("/cotizaciones/guardar", methods=["POST"])
+
 @app.route("/cotizaciones/guardar", methods=["POST"])
 def guardar_cotizacion():
     conn = None
