@@ -561,26 +561,31 @@ function buildItemPageFrame(item, options = {}) {
 function buildItemPages(item) {
   const descriptionParts = splitLongText(item.descriptionLong || "", 1350);
   const highlightsChunks = chunkArray(item.highlights || [], 10);
-  const specsChunks = chunkArray(item.specs || [], 14);
+  const specsChunks = chunkArray(item.specs || [], 16);
   const usesChunks = chunkArray(item.uses || [], 14);
   const accessoriesChunks = chunkArray(item.accessories || [], 14);
   const advantagesChunks = chunkArray(item.advantages || [], 14);
   function mergeTinyLastChunk(chunks, minSize = 3) {
   if (!Array.isArray(chunks) || chunks.length < 2) return chunks;
+
   const last = chunks[chunks.length - 1];
   const prev = chunks[chunks.length - 2];
-  if (last.length > 0 && last.length < minSize) {
+
+  if (!Array.isArray(last) || !Array.isArray(prev)) return chunks;
+
+  if (last.length > 0 && last.length <= minSize) {
     prev.push(...last);
     chunks.pop();
   }
+
   return chunks;
 }
 
-  mergeTinyLastChunk(highlightsChunks, 3);
-  mergeTinyLastChunk(specsChunks, 4);
-  mergeTinyLastChunk(usesChunks, 3);
-  mergeTinyLastChunk(accessoriesChunks, 3);
-  mergeTinyLastChunk(advantagesChunks, 3);
+  mergeTinyLastChunk(highlightsChunks, 4);
+  mergeTinyLastChunk(specsChunks, 6);
+  mergeTinyLastChunk(usesChunks, 4);
+  mergeTinyLastChunk(accessoriesChunks, 4);
+  mergeTinyLastChunk(advantagesChunks, 4);
     const pages = [];
   let pageIndex = 0;
 

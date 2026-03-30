@@ -540,17 +540,23 @@ body{
   grid-template-columns:1.2fr .8fr;
   gap:18px;
   align-items:end;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 .contact{
   color:#52606d;
   font-size:12.5px;
   line-height:1.8;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 .sign{
   text-align:right;
   color:#334155;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 .sign-line{
