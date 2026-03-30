@@ -641,9 +641,9 @@ function buildItemPageFrame(item, options = {}) {
     const isContinuation = i > 0;
 
     const hasRealLeftContent =
-  !!descriptionPart ||
-  highlightsChunk.length > 0 ||
-  specsChunk.length > 1;
+    !!descriptionPart ||
+    highlightsChunk.length > 0 ||
+    specsChunk.length > 0;
 
   const hasRealRightContent =
     usesChunk.length > 0 ||

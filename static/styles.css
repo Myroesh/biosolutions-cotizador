@@ -234,12 +234,15 @@ body{
 /* Preview pages */
 .preview-page{
   width:210mm;
+  height:297mm;
   min-height:297mm;
   margin:0 auto 20px;
   background:#fff;
   position:relative;
   overflow:hidden;
   box-shadow:0 8px 28px rgba(0,0,0,.10);
+  page-break-inside: avoid;
+  break-inside: avoid-page;
 }
 
 .left-band{
@@ -312,7 +315,7 @@ body{
   background:#ffffff;
   border:1px solid var(--line);
   border-radius:16px;
-  padding:12px 14px 12px;
+  padding:10px 12px;
 }
 
 .eyebrow{
@@ -329,12 +332,11 @@ body{
 }
 
 .doc-title{
-  margin:8px 0 4px;
-  font-size:20px;
+  margin:6px 0 4px;
+  font-size:18px;
   line-height:1.1;
   color:#0f172a;
 }
-
 .subtitle{
   margin:0;
   color:#475569;
@@ -378,6 +380,9 @@ body{
   grid-template-columns:1.3fr .7fr;
   gap:10px;
   margin-top:10px;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
+  align-items:start;
 }
 
 .card{
