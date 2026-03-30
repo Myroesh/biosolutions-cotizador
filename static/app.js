@@ -558,47 +558,48 @@ function buildItemPageFrame(item, options = {}) {
   `;
 }
 
-function buildItemPages(item) {
+  function buildItemPages(item) {
   const descriptionParts = splitLongText(item.descriptionLong || "", 1350);
   const highlightsChunks = chunkArray(item.highlights || [], 10);
   const specsChunks = chunkArray(item.specs || [], 16);
-  function dropEmptyTrailingSpecChunk(chunks) {
-  if (!Array.isArray(chunks) || !chunks.length) return chunks;
-  const last = chunks[chunks.length - 1];
-  if (!Array.isArray(last) || last.length === 0) {
-    chunks.pop();
-  }
-  return chunks;
-}
-
-dropEmptyTrailingSpecChunk(specsChunks);
   const usesChunks = chunkArray(item.uses || [], 14);
   const accessoriesChunks = chunkArray(item.accessories || [], 14);
   const advantagesChunks = chunkArray(item.advantages || [], 14);
-  function mergeTinyLastChunk(chunks, minSize = 3) {
-  if (!Array.isArray(chunks) || chunks.length < 2) return chunks;
 
-  const last = chunks[chunks.length - 1];
-  const prev = chunks[chunks.length - 2];
-
-  if (!Array.isArray(last) || !Array.isArray(prev)) return chunks;
-
-  if (last.length > 0 && last.length <= minSize) {
-    prev.push(...last);
-    chunks.pop();
+  function dropEmptyTrailingSpecChunk(chunks) {
+    if (!Array.isArray(chunks) || !chunks.length) return chunks;
+    const last = chunks[chunks.length - 1];
+    if (!Array.isArray(last) || last.length === 0) {
+      chunks.pop();
+    }
+    return chunks;
   }
 
-  return chunks;
-}
+  function mergeTinyLastChunk(chunks, minSize = 3) {
+    if (!Array.isArray(chunks) || chunks.length < 2) return chunks;
+
+    const last = chunks[chunks.length - 1];
+    const prev = chunks[chunks.length - 2];
+
+    if (!Array.isArray(last) || !Array.isArray(prev)) return chunks;
+
+    if (last.length > 0 && last.length <= minSize) {
+      prev.push(...last);
+      chunks.pop();
+    }
+
+    return chunks;
+  }
+
+  dropEmptyTrailingSpecChunk(specsChunks);
 
   mergeTinyLastChunk(highlightsChunks, 4);
   mergeTinyLastChunk(specsChunks, 8);
   mergeTinyLastChunk(usesChunks, 4);
   mergeTinyLastChunk(accessoriesChunks, 4);
   mergeTinyLastChunk(advantagesChunks, 4);
-    const pages = [];
-  let pageIndex = 0;
 
+  const pages = [];
   const maxPages = Math.max(
     1,
     descriptionParts.length,
@@ -609,7 +610,7 @@ dropEmptyTrailingSpecChunk(specsChunks);
     advantagesChunks.length
   );
 
-  for (let i = 0; i < maxPages; i++) {
+ for (let i = 0; i < maxPages; i++) {
     const descriptionPart = descriptionParts[i] || "";
     const highlightsChunk = highlightsChunks[i] || [];
     const specsChunk = specsChunks[i] || [];
@@ -618,6 +619,21 @@ dropEmptyTrailingSpecChunk(specsChunks);
     const advantagesChunk = advantagesChunks[i] || [];
 
     const isContinuation = i > 0;
+
+    const hasRealLeftContent =
+      !!descriptionPart ||
+      highlightsChunk.length > 0 ||
+      specsChunk.length > 1;
+
+    const hasRealRightContent =
+      usesChunk.length > 0 ||
+      accessoriesChunk.length > 0 ||
+      advantagesChunk.length > 0 ||
+      (i === 0 && !!item.imageSrc);
+
+    if (!hasRealLeftContent && !hasRealRightContent) {
+      continue;
+    }
 
     const leftTop = buildDescriptionCard(descriptionPart, highlightsChunk);
     const leftBottom = buildSpecsCard(specsChunk);
@@ -628,7 +644,7 @@ dropEmptyTrailingSpecChunk(specsChunks);
       advantagesChunk,
       i === 0
     );
-    
+
     pages.push(
       buildItemPageFrame(item, {
         continuation: isContinuation,
@@ -639,8 +655,6 @@ dropEmptyTrailingSpecChunk(specsChunks);
         bottomRightHtml: ""
       })
     );
-
-    pageIndex++;
   }
 
   return pages;
