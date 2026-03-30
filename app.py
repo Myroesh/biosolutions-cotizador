@@ -435,10 +435,10 @@ def guardar_cotizacion():
         print("=== GUARDAR COTIZACION ===")
         print(data)
 
-        quotation = data.get("quotation", {})
-        items = data.get("items", [])
+        quotation = data.get("quotation", {}) or {}
+        items = data.get("items", []) or []
+        selected_item_id = data.get("selectedItemId")
 
-        
         numero = (quotation.get("number") or "").strip()
         fecha = (quotation.get("date") or "").strip()
         cliente = (quotation.get("client") or "").strip()
@@ -455,15 +455,25 @@ def guardar_cotizacion():
                 precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
             except ValueError:
                 precio = 0
+
             try:
                 cantidad = float(str(item.get("quantity", "")).replace(",", "").strip() or 1)
             except ValueError:
                 cantidad = 1
+
             total += precio * cantidad
 
-          conn = get_db_connection()
-          ensure_payload_json_column(conn)
-          if db_id:
+        full_payload = {
+            "quotation": quotation,
+            "items": items,
+            "selectedItemId": selected_item_id
+        }
+        payload_json = json.dumps(full_payload, ensure_ascii=False)
+
+        conn = get_db_connection()
+        ensure_payload_json_column(conn)
+
+        if db_id:
             conn.execute("""
                 UPDATE cotizaciones
                 SET numero = ?, fecha = ?, cliente = ?, atencion = ?, ciudad = ?,
@@ -492,7 +502,7 @@ def guardar_cotizacion():
             ))
             cotizacion_id = cur.lastrowid
 
-         for idx, item in enumerate(items):
+        for idx, item in enumerate(items):
             try:
                 precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
             except ValueError:
@@ -551,7 +561,7 @@ def guardar_cotizacion():
         """, (payload_json_final, cotizacion_id))
 
         conn.commit()
-        
+
         print("Cotización guardada con ID:", cotizacion_id)
         print("Número:", numero)
         print("Total:", total)
