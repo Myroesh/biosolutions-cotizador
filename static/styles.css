@@ -309,7 +309,7 @@ body{
 
 .title-card{
   margin-top:8px;
-  background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);
+  background:#ffffff;
   border:1px solid var(--line);
   border-radius:16px;
   padding:12px 14px 12px;
