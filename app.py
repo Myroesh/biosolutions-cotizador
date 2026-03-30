@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+import json
 import sqlite3
 from datetime import date
 
@@ -10,6 +11,13 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def ensure_payload_json_column(conn):
+    columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
+    column_names = [col["name"] for col in columns]
+
+    if "payload_json" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN payload_json TEXT")
+        conn.commit()
 
 def next_quote_number(conn):
     row = conn.execute("""
@@ -177,6 +185,7 @@ def dashboard():
 @app.route("/cotizador")
 def cotizador():
     conn = get_db_connection()
+    ensure_payload_json_column(conn)
 
     plantillas = conn.execute("""
         SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
@@ -306,6 +315,7 @@ def plantillas_page():
 @app.route("/cotizaciones")
 def cotizaciones_page():
     conn = get_db_connection()
+    ensure_payload_json_column(conn)
     cotizaciones = conn.execute("""
         SELECT *
         FROM cotizaciones
@@ -318,6 +328,7 @@ def cotizaciones_page():
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
 def cotizacion_json(cotizacion_id):
     conn = get_db_connection()
+    ensure_payload_json_column(conn)
 
     cot = conn.execute("""
         SELECT *
@@ -328,6 +339,38 @@ def cotizacion_json(cotizacion_id):
     if not cot:
         conn.close()
         return jsonify({"error": "Cotización no encontrada"}), 404
+
+    payload_json = (cot["payload_json"] or "").strip()
+
+    if payload_json:
+        try:
+            payload = json.loads(payload_json)
+
+            if not isinstance(payload, dict):
+                raise ValueError("payload_json inválido")
+
+            payload.setdefault("quotation", {})
+            payload.setdefault("items", [])
+            payload.setdefault("selectedItemId", None)
+
+            payload["quotation"]["dbId"] = cot["id"]
+            payload["quotation"]["number"] = payload["quotation"].get("number") or (cot["numero"] or "")
+            payload["quotation"]["date"] = payload["quotation"].get("date") or (cot["fecha"] or "")
+            payload["quotation"]["client"] = payload["quotation"].get("client") or (cot["cliente"] or "")
+            payload["quotation"]["attention"] = payload["quotation"].get("attention") or (cot["atencion"] or "")
+            payload["quotation"]["city"] = payload["quotation"].get("city") or (cot["ciudad"] or "")
+            payload["quotation"]["validity"] = payload["quotation"].get("validity") or (cot["validez"] or "")
+            payload["quotation"]["paymentTerms"] = payload["quotation"].get("paymentTerms") or (cot["forma_pago"] or "")
+            payload["quotation"]["notes"] = payload["quotation"].get("notes") or (cot["observaciones"] or "")
+
+            if not payload["selectedItemId"] and payload["items"]:
+                payload["selectedItemId"] = payload["items"][0].get("id")
+
+            conn.close()
+            return jsonify(payload)
+
+        except Exception as e:
+            print("WARNING: payload_json inválido, usando fallback antiguo:", e)
 
     items = conn.execute("""
         SELECT *
@@ -395,6 +438,7 @@ def guardar_cotizacion():
         quotation = data.get("quotation", {})
         items = data.get("items", [])
 
+        
         numero = (quotation.get("number") or "").strip()
         fecha = (quotation.get("date") or "").strip()
         cliente = (quotation.get("client") or "").strip()
@@ -417,17 +461,17 @@ def guardar_cotizacion():
                 cantidad = 1
             total += precio * cantidad
 
-        conn = get_db_connection()
-
-        if db_id:
+          conn = get_db_connection()
+          ensure_payload_json_column(conn)
+          if db_id:
             conn.execute("""
                 UPDATE cotizaciones
                 SET numero = ?, fecha = ?, cliente = ?, atencion = ?, ciudad = ?,
-                    validez = ?, forma_pago = ?, observaciones = ?, total = ?
+                    validez = ?, forma_pago = ?, observaciones = ?, total = ?, payload_json = ?
                 WHERE id = ?
             """, (
                 numero, fecha, cliente, atencion, ciudad,
-                validez, forma_pago, observaciones, total, db_id
+                validez, forma_pago, observaciones, total, payload_json, db_id
             ))
             cotizacion_id = db_id
 
@@ -439,16 +483,16 @@ def guardar_cotizacion():
             cur = conn.execute("""
                 INSERT INTO cotizaciones (
                     numero, fecha, cliente, atencion, ciudad,
-                    validez, forma_pago, observaciones, total, estado
+                    validez, forma_pago, observaciones, total, estado, payload_json
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador')
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador', ?)
             """, (
                 numero, fecha, cliente, atencion, ciudad,
-                validez, forma_pago, observaciones, total
+                validez, forma_pago, observaciones, total, payload_json
             ))
             cotizacion_id = cur.lastrowid
 
-        for idx, item in enumerate(items):
+         for idx, item in enumerate(items):
             try:
                 precio = float(str(item.get("price", "")).replace(",", "").strip() or 0)
             except ValueError:
@@ -494,8 +538,20 @@ def guardar_cotizacion():
                 idx
             ))
 
-        conn.commit()
+        full_payload["quotation"] = dict(full_payload.get("quotation") or {})
+        full_payload["quotation"]["dbId"] = cotizacion_id
+        full_payload["quotation"]["number"] = numero
 
+        payload_json_final = json.dumps(full_payload, ensure_ascii=False)
+
+        conn.execute("""
+            UPDATE cotizaciones
+            SET payload_json = ?
+            WHERE id = ?
+        """, (payload_json_final, cotizacion_id))
+
+        conn.commit()
+        
         print("Cotización guardada con ID:", cotizacion_id)
         print("Número:", numero)
         print("Total:", total)
