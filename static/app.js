@@ -241,20 +241,38 @@ function bindItemMainFields() {
 
   const imageUpload = document.getElementById("itemImageUpload");
   if (imageUpload) {
-    imageUpload.addEventListener("change", (e) => {
+    imageUpload.addEventListener("change", async (e) => {
       const item = getSelectedItem();
       if (!item) return;
 
       const file = e.target.files[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        item.imageSrc = reader.result;
-        document.getElementById("itemImageUrl").value = "";
+      const formData = new FormData();
+      formData.append("image", file);
+
+      try {
+        const res = await fetch("/upload-image", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alert(data.error || "No se pudo subir la imagen.");
+          return;
+        }
+
+        item.imageSrc = data.url || "";
+        document.getElementById("itemImageUrl").value = item.imageSrc;
         renderAll();
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error(err);
+        alert("Error subiendo imagen.");
+      } finally {
+        e.target.value = "";
+      }
     });
   }
 }
@@ -804,7 +822,8 @@ function renderAll() {
 async function saveQuotationToDb() {
   const payload = {
     quotation: appState.quotation,
-    items: appState.items
+    items: appState.items,
+    selectedItemId: appState.selectedItemId
   };
 
   const res = await fetch("/cotizaciones/guardar", {

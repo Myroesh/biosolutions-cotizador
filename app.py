@@ -1,10 +1,42 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import json
+import os
 import sqlite3
+import uuid
 from datetime import date
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 DB_PATH = "biosolutions.db"
+
+UPLOAD_SUBDIR = os.path.join("uploads", "cotizaciones")
+UPLOAD_DIR = os.path.join(app.static_folder, "uploads", "cotizaciones")
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
+
+
+def ensure_upload_dir():
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def allowed_image_file(filename):
+    if not filename or "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
+
+def normalize_image_path_for_db(image_value):
+    image_value = (image_value or "").strip()
+    if not image_value:
+        return ""
+
+    if image_value.startswith("/static/"):
+        return image_value.replace("/static/", "", 1)
+
+    if image_value.startswith("static/"):
+        return image_value.replace("static/", "", 1)
+
+    return image_value
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=10)
@@ -181,6 +213,36 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
 def dashboard():
     return render_template("index.html", active_page="inicio")
 
+@app.route("/upload-image", methods=["POST"])
+def upload_image():
+    ensure_upload_dir()
+
+    if "image" not in request.files:
+        return jsonify({"ok": False, "error": "No se recibió ningún archivo"}), 400
+
+    file = request.files["image"]
+    if not file or not file.filename:
+        return jsonify({"ok": False, "error": "Archivo inválido"}), 400
+
+    if not allowed_image_file(file.filename):
+        return jsonify({"ok": False, "error": "Formato no permitido"}), 400
+
+    original_name = secure_filename(file.filename)
+    ext = original_name.rsplit(".", 1)[1].lower()
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+
+    save_path = os.path.join(UPLOAD_DIR, unique_name)
+    file.save(save_path)
+
+    relative_path = f"uploads/cotizaciones/{unique_name}"
+    public_url = f"/static/{relative_path}"
+
+    return jsonify({
+        "ok": True,
+        "relative_path": relative_path,
+        "url": public_url,
+        "filename": unique_name
+    })
 
 @app.route("/cotizador")
 def cotizador():
@@ -513,9 +575,7 @@ def guardar_cotizacion():
             except ValueError:
                 cantidad = 1
 
-            imagen = (item.get("imageSrc") or "").strip()
-            if imagen.startswith("/static/"):
-                imagen = imagen.replace("/static/", "", 1)
+            imagen = normalize_image_path_for_db(item.get("imageSrc"))
 
             conn.execute("""
                 INSERT INTO cotizacion_items (
@@ -785,4 +845,5 @@ def editar_plantilla(plantilla_id):
     return redirect(url_for("plantillas_page"))
 
 if __name__ == "__main__":
+    ensure_upload_dir()
     app.run(host="0.0.0.0", port=8081, debug=True)
