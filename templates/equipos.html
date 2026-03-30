@@ -111,7 +111,44 @@
     color:#64748b;
     line-height:1.6;
   }
+  .card-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:12px;
+  }
 
+  .btn-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    background:#0b8fb0;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .btn-link.secondary{
+    background:#e2e8f0;
+    color:#0f172a;
+  }
+
+  .origin-badge{
+    display:inline-block;
+    margin-top:8px;
+    background:#eef6fb;
+    color:#0a4570;
+    border:1px solid #cfe4ef;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:700;
+  }
   @media (max-width: 1100px){
     .page-grid{
       grid-template-columns:1fr;
@@ -184,20 +221,38 @@
         {% for equipo in equipos %}
           <div class="lib-card">
             <strong>{{ equipo["nombre"] }}</strong>
+
             <span>
               {% if equipo["marca"] %}Marca: {{ equipo["marca"] }}{% endif %}
               {% if equipo["modelo"] %} | Modelo: {{ equipo["modelo"] }}{% endif %}
             </span>
+
             <span>
               {% if equipo["origen"] %}Origen: {{ equipo["origen"] }}{% endif %}
               {% if equipo["garantia_base"] %} | Garantía: {{ equipo["garantia_base"] }}{% endif %}
             </span>
+
+            <span class="origin-badge">
+              Plantillas derivadas: {{ equipo["plantillas_count"] or 0 }}
+            </span>
+
             {% if equipo["descripcion_breve"] %}
               <span>{{ equipo["descripcion_breve"] }}</span>
             {% endif %}
+
             {% if equipo["imagen"] %}
-              <span>Imagen: {{ equipo["imagen"] }}</span>
+              <span>Imagen base: {{ equipo["imagen"] }}</span>
             {% endif %}
+
+            <div class="card-actions">
+              <a class="btn-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}">
+                Crear plantilla
+              </a>
+
+              <a class="btn-link secondary" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}">
+                Ver plantillas
+              </a>
+            </div>
           </div>
         {% endfor %}
       </div>

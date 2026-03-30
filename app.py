@@ -324,20 +324,36 @@ def cotizador():
 @app.route("/equipos")
 def equipos_page():
     conn = get_db_connection()
+
     equipos = conn.execute("""
-        SELECT *
-        FROM equipos
-        WHERE activo = 1
-        ORDER BY id DESC
+        SELECT
+            e.*,
+            COUNT(p.id) AS plantillas_count
+        FROM equipos e
+        LEFT JOIN plantillas p
+            ON p.equipo_id = e.id
+           AND p.activo = 1
+        WHERE e.activo = 1
+        GROUP BY e.id
+        ORDER BY e.id DESC
     """).fetchall()
+
     conn.close()
     return render_template("equipos.html", equipos=equipos, active_page="equipos")
-
 
 @app.route("/plantillas")
 def plantillas_page():
     conn = get_db_connection()
 
+    equipo_id_raw = (request.args.get("equipo_id") or "").strip()
+    equipo_id = None
+
+    if equipo_id_raw:
+        try:
+            equipo_id = int(equipo_id_raw)
+        except ValueError:
+            equipo_id = None
+
     equipos = conn.execute("""
         SELECT *
         FROM equipos
@@ -345,13 +361,31 @@ def plantillas_page():
         ORDER BY id DESC
     """).fetchall()
 
-    plantillas_rows = conn.execute("""
-        SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
-        FROM plantillas p
-        LEFT JOIN equipos e ON e.id = p.equipo_id
-        WHERE p.activo = 1
-        ORDER BY p.id DESC
-    """).fetchall()
+    if equipo_id:
+        plantillas_rows = conn.execute("""
+            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+            FROM plantillas p
+            LEFT JOIN equipos e ON e.id = p.equipo_id
+            WHERE p.activo = 1
+              AND p.equipo_id = ?
+            ORDER BY p.id DESC
+        """, (equipo_id,)).fetchall()
+    else:
+        plantillas_rows = conn.execute("""
+            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+            FROM plantillas p
+            LEFT JOIN equipos e ON e.id = p.equipo_id
+            WHERE p.activo = 1
+            ORDER BY p.id DESC
+        """).fetchall()
+
+    selected_equipo = None
+    if equipo_id:
+        selected_equipo = conn.execute("""
+            SELECT *
+            FROM equipos
+            WHERE id = ? AND activo = 1
+        """, (equipo_id,)).fetchone()
 
     plantillas = []
     for p in plantillas_rows:
@@ -370,9 +404,10 @@ def plantillas_page():
         "plantillas.html",
         equipos=equipos,
         plantillas=plantillas,
-        active_page="plantillas"
+        active_page="plantillas",
+        selected_equipo=selected_equipo,
+        selected_equipo_id=equipo_id
     )
-
 
 @app.route("/cotizaciones")
 def cotizaciones_page():

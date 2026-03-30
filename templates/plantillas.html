@@ -103,7 +103,27 @@
     color:#64748b;
     line-height:1.6;
   }
+ .context-box{
+    margin-bottom:14px;
+    background:#eef6fb;
+    border:1px solid #cfe4ef;
+    border-radius:14px;
+    padding:12px 14px;
+  }
 
+  .context-box strong{
+    display:block;
+    margin-bottom:6px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .context-box span{
+    display:block;
+    font-size:13px;
+    color:#475569;
+    line-height:1.6;
+  }
   @media (max-width: 1100px){
     .page-grid{
       grid-template-columns:1fr;
@@ -189,22 +209,31 @@
 <div class="page-grid">
   <section class="page-card">
     <h2>Nueva plantilla / variante</h2>
-
+    {% if selected_equipo %}
+      <div class="context-box">
+        <strong>Creando plantilla desde equipo maestro</strong>
+        <span>
+          {{ selected_equipo["nombre"] }}
+          {% if selected_equipo["marca"] %} - {{ selected_equipo["marca"] }}{% endif %}
+          {% if selected_equipo["modelo"] %} {{ selected_equipo["modelo"] }}{% endif %}
+        </span>
+      </div>
+    {% endif %}
     <form method="post" action="/plantillas/nueva" id="plantillaForm">
   <div class="field">
     <label for="modo_creacion">Modo de creación *</label>
     <select id="modo_creacion" name="modo_creacion" required onchange="toggleEquipoBaseField()">
-      <option value="vacia">Plantilla vacía</option>
-      <option value="desde_equipo">Crear desde equipo maestro</option>
+      <option value="desde_equipo" {% if selected_equipo_id %}selected{% endif %}>Crear desde equipo maestro</option>
+      <option value="vacia" {% if not selected_equipo_id %}selected{% endif %}>Plantilla vacía</option>
     </select>
   </div>
 
-  <div class="field" id="equipoBaseWrapper" style="display:none;">
+    <div class="field" id="equipoBaseWrapper" style="display:none;">
     <label for="equipo_id">Equipo maestro base</label>
     <select id="equipo_id" name="equipo_id">
       <option value="">Selecciona un equipo</option>
       {% for equipo in equipos %}
-        <option value="{{ equipo['id'] }}">
+        <option value="{{ equipo['id'] }}" {% if selected_equipo_id and selected_equipo_id == equipo['id'] %}selected{% endif %}>
           {{ equipo["nombre"] }}
           {% if equipo["marca"] %} - {{ equipo["marca"] }}{% endif %}
           {% if equipo["modelo"] %} {{ equipo["modelo"] }}{% endif %}
@@ -212,7 +241,6 @@
       {% endfor %}
     </select>
   </div>
-
   <div class="field">
     <label for="nombre_plantilla">Nombre de plantilla *</label>
     <input type="text" id="nombre_plantilla" name="nombre_plantilla" required placeholder="Yonker 8000B pediátrico">
@@ -256,28 +284,41 @@
 </form>
 
     <p class="tiny-note" style="margin-top:14px;">
-      Aquí guardas variantes reutilizables por equipo: pediátrico, neonatal, marketing sin precio, full accesorios, etc.
+      Las plantillas son variantes comerciales reutilizables. Lo ideal es crearlas desde un equipo maestro y luego enriquecerlas con precio, accesorios, usos, ventajas y especificaciones.
     </p>
   </section>
 
   <section class="page-card">
     <h2>Biblioteca de plantillas</h2>
-
+    {% if selected_equipo %}
+      <div class="context-box">
+        <strong>Mostrando plantillas derivadas de este equipo</strong>
+        <span>
+          {{ selected_equipo["nombre"] }}
+          {% if selected_equipo["marca"] %} - {{ selected_equipo["marca"] }}{% endif %}
+          {% if selected_equipo["modelo"] %} {{ selected_equipo["modelo"] }}{% endif %}
+        </span>
+      </div>
+    {% endif %}
     {% if plantillas %}
       <div class="lib-list">
         {% for p in plantillas %}
           <div class="lib-card">
             <strong>{{ p["nombre_plantilla"] }}</strong>
             <span>
-              Base:
+              Equipo origen:
               {% if p["equipo_nombre"] %}
                 {{ p["equipo_nombre"] }}
                 {% if p["equipo_marca"] %} - {{ p["equipo_marca"] }}{% endif %}
                 {% if p["equipo_modelo"] %} {{ p["equipo_modelo"] }}{% endif %}
               {% else %}
-                Plantilla vacía / sin equipo base
+                Plantilla vacía / sin equipo maestro base
               {% endif %}
             </span>
+
+            {% if p["equipo_nombre"] %}
+              <span class="origin-pill">Derivada de equipo maestro</span>
+            {% endif %}
 
             {% if p["nombre_comercial"] %}
               <span>Nombre comercial: {{ p["nombre_comercial"] }}</span>
