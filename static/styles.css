@@ -249,6 +249,8 @@ body{
   background:linear-gradient(180deg,#0a4570 0%, #0b8fb0 38%, #f6a21a 72%, #f47c20 100%);
   clip-path:polygon(0 0,100% 0,72% 50%,100% 100%,0 100%);
   opacity:.98;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .left-band::after{
@@ -257,6 +259,8 @@ body{
   inset:0;
   background:linear-gradient(145deg,rgba(255,255,255,.18) 12%,transparent 12% 24%,rgba(255,255,255,.12) 24% 36%,transparent 36% 52%,rgba(255,255,255,.08) 52% 67%,transparent 67%);
   mix-blend-mode:screen;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .preview-content{
@@ -273,7 +277,7 @@ body{
 }
 
 .preview-logo{
-  width:82px;
+  width:100px;
   max-width:100%;
 }
 
@@ -445,7 +449,7 @@ body{
   padding:8px;
   overflow:hidden;
   background:#f8fbfd;
-}
+} 
 
 .image-box img{
   width:100%;

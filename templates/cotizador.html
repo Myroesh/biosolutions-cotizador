@@ -48,6 +48,18 @@
   }
 
     @media print {
+      * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+        }
+
+        .left-band,
+        .left-band::after,
+        .doc-chip,
+        .eyebrow {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
     html,
     body {
       width: auto !important;
@@ -120,7 +132,7 @@
   .image-box,
   .spec-table,
   .badge-row,
-  .clean {
+  .clean {@media print
     break-inside: avoid-page;
     page-break-inside: avoid;
   }
