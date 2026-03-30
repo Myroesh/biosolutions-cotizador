@@ -244,10 +244,11 @@ body{
 
 .left-band{
   position:absolute;
-  inset:0 auto 0 0;
+  top:0;
+  left:0;
+  bottom:0;
   width:24mm;
   background:linear-gradient(180deg,#0a4570 0%, #0b8fb0 38%, #f6a21a 72%, #f47c20 100%);
-  clip-path:polygon(0 0,100% 0,72% 50%,100% 100%,0 100%);
   opacity:.98;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -257,8 +258,8 @@ body{
   content:"";
   position:absolute;
   inset:0;
-  background:linear-gradient(145deg,rgba(255,255,255,.18) 12%,transparent 12% 24%,rgba(255,255,255,.12) 24% 36%,transparent 36% 52%,rgba(255,255,255,.08) 52% 67%,transparent 67%);
-  mix-blend-mode:screen;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.18) 12%,transparent 12% 24%,rgba(255,255,255,.12) 24% 36%,transparent 36% 52%,rgba(255,255,255,.08) 52% 67%,transparent 67%);
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
