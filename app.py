@@ -188,6 +188,8 @@ def cotizador():
 
     plantillas_json = []
     for p in plantillas:
+        children = get_plantilla_children(conn, p["id"])
+
         plantillas_json.append({
             "id": p["id"],
             "nombre_plantilla": p["nombre_plantilla"] or "",
@@ -199,7 +201,40 @@ def cotizador():
             "descripcion_larga": p["descripcion_larga"] or "",
             "imagen": p["imagen"] or "",
             "precio_base": p["precio_base"] or 0,
-            "mostrar_precio_por_defecto": p["mostrar_precio_por_defecto"] or 0
+            "mostrar_precio_por_defecto": p["mostrar_precio_por_defecto"] or 0,
+            "especificaciones": [
+                {
+                    "id": row["id"],
+                    "parametro": row["parametro"] or "",
+                    "detalle": row["detalle"] or "",
+                    "orden": row["orden"] or 0
+                }
+                for row in children["especificaciones"]
+            ],
+            "usos": [
+                {
+                    "id": row["id"],
+                    "texto": row["texto"] or "",
+                    "orden": row["orden"] or 0
+                }
+                for row in children["usos"]
+            ],
+            "accesorios": [
+                {
+                    "id": row["id"],
+                    "texto": row["texto"] or "",
+                    "orden": row["orden"] or 0
+                }
+                for row in children["accesorios"]
+            ],
+            "ventajas": [
+                {
+                    "id": row["id"],
+                    "texto": row["texto"] or "",
+                    "orden": row["orden"] or 0
+                }
+                for row in children["ventajas"]
+            ]
         })
 
     new_number = next_quote_number(conn)

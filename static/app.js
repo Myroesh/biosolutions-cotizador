@@ -41,6 +41,26 @@ function createEmptyItem() {
     imageSrc: ""
   };
 }
+function normalizeTemplateSpecs(specs) {
+  if (!Array.isArray(specs)) return [];
+  return specs
+    .map(row => ({
+      param: row?.param ?? row?.parametro ?? "",
+      value: row?.value ?? row?.detalle ?? ""
+    }))
+    .filter(row => row.param || row.value);
+}
+
+function normalizeTemplateTextList(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(row => {
+      if (typeof row === "string") return row;
+      return row?.texto ?? "";
+    })
+    .map(text => String(text || "").trim())
+    .filter(Boolean);
+}
 
 function createItemFromTemplate(template) {
   return {
@@ -58,10 +78,10 @@ function createItemFromTemplate(template) {
     subtitle: template.descripcion_breve || "",
     descriptionLong: template.descripcion_larga || "",
     highlights: [],
-    specs: [],
-    uses: [],
-    accessories: [],
-    advantages: [],
+    specs: normalizeTemplateSpecs(template.especificaciones),
+    uses: normalizeTemplateTextList(template.usos),
+    accessories: normalizeTemplateTextList(template.accesorios),
+    advantages: normalizeTemplateTextList(template.ventajas),
     imageSrc: template.imagen ? `/static/${template.imagen}` : ""
   };
 }
