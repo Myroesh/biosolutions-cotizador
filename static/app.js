@@ -621,19 +621,21 @@ function buildItemPageFrame(item, options = {}) {
     const isContinuation = i > 0;
 
     const hasRealLeftContent =
-      !!descriptionPart ||
-      highlightsChunk.length > 0 ||
-      specsChunk.length > 1;
+  !!descriptionPart ||
+  highlightsChunk.length > 0 ||
+  specsChunk.length > 1;
 
-    const hasRealRightContent =
-      usesChunk.length > 0 ||
-      accessoriesChunk.length > 0 ||
-      advantagesChunk.length > 0 ||
-      (i === 0 && !!item.imageSrc);
+  const hasRealRightContent =
+    usesChunk.length > 0 ||
+    accessoriesChunk.length > 0 ||
+    advantagesChunk.length > 0 ||
+    (i === 0 && !!item.imageSrc);
 
-    if (!hasRealLeftContent && !hasRealRightContent) {
-      continue;
-    }
+  const isFirstPageOfItem = i === 0;
+
+  if (!isFirstPageOfItem && !hasRealLeftContent && !hasRealRightContent) {
+    continue;
+  }
 
     const leftTop = buildDescriptionCard(descriptionPart, highlightsChunk);
     const leftBottom = buildSpecsCard(specsChunk);
