@@ -415,7 +415,7 @@ function chunkArray(arr, size) {
   return chunks;
 }
 
-function splitLongText(text, maxChars = 1200) {
+function splitLongText(text, maxChars = 760) {
   const clean = String(text || "").trim();
   if (!clean) return [];
 
@@ -434,22 +434,116 @@ function splitLongText(text, maxChars = 1200) {
         clean.lastIndexOf("\n", end),
         clean.lastIndexOf(". ", end),
         clean.lastIndexOf("; ", end),
+        clean.lastIndexOf(": ", end),
         clean.lastIndexOf(", ", end),
         clean.lastIndexOf(" ", end)
       );
 
-      if (lastBreak > start + 300) {
+      if (lastBreak > start + 180) {
         end = lastBreak + 1;
       }
     }
 
-    parts.push(clean.slice(start, end).trim());
+    const slice = clean.slice(start, end).trim();
+    if (slice) parts.push(slice);
     start = end;
   }
 
   return parts.filter(Boolean);
 }
+function estimateTextUnits(text, charsPerUnit = 95) {
+  const clean = String(text || "").trim();
+  if (!clean) return 0;
+  return Math.max(1, Math.ceil(clean.length / charsPerUnit));
+}
 
+function estimateSpecUnits(spec) {
+  const param = String(spec?.param || spec?.parametro || "").trim();
+  const value = String(spec?.value || spec?.detalle || "").trim();
+  const totalChars = param.length + value.length;
+  return Math.max(1, Math.ceil(totalChars / 72));
+}
+
+function takeTextPartsByBudget(parts, startIndex, maxUnits) {
+  let used = 0;
+  let i = startIndex;
+  const taken = [];
+
+  while (i < parts.length) {
+    const units = estimateTextUnits(parts[i]);
+    if (taken.length > 0 && used + units > maxUnits) break;
+
+    if (taken.length === 0 && units > maxUnits) {
+      taken.push(parts[i]);
+      i += 1;
+      break;
+    }
+
+    taken.push(parts[i]);
+    used += units;
+    i += 1;
+  }
+
+  return {
+    items: taken,
+    nextIndex: i,
+    usedUnits: used
+  };
+}
+
+function takeSimpleListByBudget(items, startIndex, maxUnits, charsPerUnit = 45) {
+  let used = 0;
+  let i = startIndex;
+  const taken = [];
+
+  while (i < items.length) {
+    const units = estimateTextUnits(items[i], charsPerUnit);
+    if (taken.length > 0 && used + units > maxUnits) break;
+
+    if (taken.length === 0 && units > maxUnits) {
+      taken.push(items[i]);
+      i += 1;
+      break;
+    }
+
+    taken.push(items[i]);
+    used += units;
+    i += 1;
+  }
+
+  return {
+    items: taken,
+    nextIndex: i,
+    usedUnits: used
+  };
+}
+
+function takeSpecsByBudget(items, startIndex, maxUnits) {
+  let used = 0;
+  let i = startIndex;
+  const taken = [];
+
+  while (i < items.length) {
+    const units = estimateSpecUnits(items[i]);
+    if (taken.length > 0 && used + units > maxUnits) break;
+
+    if (taken.length === 0 && units > maxUnits) {
+      taken.push(items[i]);
+      i += 1;
+      break;
+    }
+
+    taken.push(items[i]);
+    used += units;
+    i += 1;
+  }
+
+  return {
+    items: taken,
+    nextIndex: i,
+    usedUnits: used
+  };
+}
 function buildHeaderMetaGrid(item, qty, subtotal, showSubtotal = true) {
   return `
     <div class="meta-grid">
@@ -596,105 +690,145 @@ function buildItemPageFrame(item, options = {}) {
   `;
 }
 
-  function buildItemPages(item) {
-  const descriptionParts = splitLongText(item.descriptionLong || "", 1350);
-  const highlightsChunks = chunkArray(item.highlights || [], 10);
-  const specsChunks = chunkArray(item.specs || [], 16);
-  const usesChunks = chunkArray(item.uses || [], 14);
-  const accessoriesChunks = chunkArray(item.accessories || [], 14);
-  const advantagesChunks = chunkArray(item.advantages || [], 14);
+function buildItemPages(item) {
+  const descriptionParts = splitLongText(item.descriptionLong || "", 760);
+  const highlights = Array.isArray(item.highlights) ? item.highlights : [];
+  const specs = Array.isArray(item.specs) ? item.specs : [];
+  const uses = Array.isArray(item.uses) ? item.uses : [];
+  const accessories = Array.isArray(item.accessories) ? item.accessories : [];
+  const advantages = Array.isArray(item.advantages) ? item.advantages : [];
 
-  function dropEmptyTrailingSpecChunk(chunks) {
-    if (!Array.isArray(chunks) || !chunks.length) return chunks;
-    const last = chunks[chunks.length - 1];
-    if (!Array.isArray(last) || last.length === 0) {
-      chunks.pop();
-    }
-    return chunks;
-  }
-
-  function mergeTinyLastChunk(chunks, minSize = 3) {
-    if (!Array.isArray(chunks) || chunks.length < 2) return chunks;
-
-    const last = chunks[chunks.length - 1];
-    const prev = chunks[chunks.length - 2];
-
-    if (!Array.isArray(last) || !Array.isArray(prev)) return chunks;
-
-    if (last.length > 0 && last.length <= minSize) {
-      prev.push(...last);
-      chunks.pop();
-    }
-
-    return chunks;
-  }
-
-  dropEmptyTrailingSpecChunk(specsChunks);
-
-  mergeTinyLastChunk(highlightsChunks, 4);
-  mergeTinyLastChunk(specsChunks, 8);
-  mergeTinyLastChunk(usesChunks, 4);
-  mergeTinyLastChunk(accessoriesChunks, 4);
-  mergeTinyLastChunk(advantagesChunks, 4);
+  let descIndex = 0;
+  let highlightsIndex = 0;
+  let specsIndex = 0;
+  let usesIndex = 0;
+  let accessoriesIndex = 0;
+  let advantagesIndex = 0;
 
   const pages = [];
-  const maxPages = Math.max(
-    1,
-    descriptionParts.length,
-    highlightsChunks.length,
-    specsChunks.length,
-    usesChunks.length,
-    accessoriesChunks.length,
-    advantagesChunks.length
-  );
+  let pageNo = 0;
 
- for (let i = 0; i < maxPages; i++) {
-    const descriptionPart = descriptionParts[i] || "";
-    const highlightsChunk = highlightsChunks[i] || [];
-    const specsChunk = specsChunks[i] || [];
-    const usesChunk = usesChunks[i] || [];
-    const accessoriesChunk = accessoriesChunks[i] || [];
-    const advantagesChunk = advantagesChunks[i] || [];
+  while (
+    pageNo === 0 ||
+    descIndex < descriptionParts.length ||
+    highlightsIndex < highlights.length ||
+    specsIndex < specs.length ||
+    usesIndex < uses.length ||
+    accessoriesIndex < accessories.length ||
+    advantagesIndex < advantages.length
+  ) {
+    const isContinuation = pageNo > 0;
 
-    const isContinuation = i > 0;
+    // LETTER: menos espacio vertical que A4
+    const leftBudget = isContinuation ? 26 : 21;
+    const rightBudget = isContinuation ? 18 : 13;
+
+    let leftRemaining = leftBudget;
+    let rightRemaining = rightBudget;
+
+    const descTake = takeTextPartsByBudget(
+      descriptionParts,
+      descIndex,
+      Math.max(8, leftRemaining - 6)
+    );
+    const descriptionPart = descTake.items.join("\n\n");
+    descIndex = descTake.nextIndex;
+    leftRemaining -= descTake.usedUnits;
+
+    const highlightsTake = takeSimpleListByBudget(
+      highlights,
+      highlightsIndex,
+      Math.max(0, Math.min(5, leftRemaining)),
+      48
+    );
+    const highlightsChunk = highlightsTake.items;
+    highlightsIndex = highlightsTake.nextIndex;
+    leftRemaining -= highlightsTake.usedUnits;
+
+    const specsTake = takeSpecsByBudget(
+      specs,
+      specsIndex,
+      Math.max(0, leftRemaining)
+    );
+    const specsChunk = specsTake.items;
+    specsIndex = specsTake.nextIndex;
+    leftRemaining -= specsTake.usedUnits;
+
+    const showImage = pageNo === 0;
+    if (showImage && item.imageSrc) {
+      rightRemaining -= 6;
+    }
+
+    const usesTake = takeSimpleListByBudget(
+      uses,
+      usesIndex,
+      Math.max(0, Math.min(4, rightRemaining)),
+      42
+    );
+    const usesChunk = usesTake.items;
+    usesIndex = usesTake.nextIndex;
+    rightRemaining -= usesTake.usedUnits;
+
+    const accessoriesTake = takeSimpleListByBudget(
+      accessories,
+      accessoriesIndex,
+      Math.max(0, Math.min(6, rightRemaining)),
+      42
+    );
+    const accessoriesChunk = accessoriesTake.items;
+    accessoriesIndex = accessoriesTake.nextIndex;
+    rightRemaining -= accessoriesTake.usedUnits;
+
+    const advantagesTake = takeSimpleListByBudget(
+      advantages,
+      advantagesIndex,
+      Math.max(0, rightRemaining),
+      42
+    );
+    const advantagesChunk = advantagesTake.items;
+    advantagesIndex = advantagesTake.nextIndex;
+    rightRemaining -= advantagesTake.usedUnits;
 
     const hasRealLeftContent =
-    !!descriptionPart ||
-    highlightsChunk.length > 0 ||
-    specsChunk.length > 0;
+      !!descriptionPart ||
+      highlightsChunk.length > 0 ||
+      specsChunk.length > 0;
 
-  const hasRealRightContent =
-    usesChunk.length > 0 ||
-    accessoriesChunk.length > 0 ||
-    advantagesChunk.length > 0 ||
-    (i === 0 && !!item.imageSrc);
+    const hasRealRightContent =
+      usesChunk.length > 0 ||
+      accessoriesChunk.length > 0 ||
+      advantagesChunk.length > 0 ||
+      (showImage && !!item.imageSrc);
 
-  const isFirstPageOfItem = i === 0;
-
-  if (!isFirstPageOfItem && !hasRealLeftContent && !hasRealRightContent) {
-    continue;
-  }
+    if (pageNo > 0 && !hasRealLeftContent && !hasRealRightContent) {
+      break;
+    }
 
     const leftTop = buildDescriptionCard(descriptionPart, highlightsChunk);
     const leftBottom = buildSpecsCard(specsChunk);
+
     const rightTop = buildImageAndListsCard(
       item,
       usesChunk,
       accessoriesChunk,
       advantagesChunk,
-      i === 0
+      showImage
     );
 
     pages.push(
       buildItemPageFrame(item, {
         continuation: isContinuation,
-        continuationIndex: i + 1,
+        continuationIndex: pageNo + 1,
         topLeftHtml: leftTop,
         topRightHtml: rightTop,
         bottomLeftHtml: leftBottom,
         bottomRightHtml: ""
       })
     );
+
+    pageNo += 1;
+
+    if (pageNo > 60) break;
   }
 
   return pages;
