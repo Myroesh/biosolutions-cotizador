@@ -248,12 +248,12 @@
               <span>Imagen base: {{ equipo["imagen"] }}</span>
             {% endif %}
 
-            <div class="card-actions">
-              <a class="btn-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}">
+            < <div class="card-actions">
+              <a class="btn-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}&action=create">
                 Crear plantilla
               </a>
 
-              <a class="btn-link secondary" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}">
+              <a class="btn-link secondary" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}&action=view">
                 Ver plantillas
               </a>
 

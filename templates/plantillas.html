@@ -146,6 +146,32 @@
     font-weight:700;
     cursor:pointer;
   }
+  .top-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+
+  .top-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    background:#e2e8f0;
+    color:#0f172a;
+    border:none;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .top-link.primary{
+    background:#0b8fb0;
+    color:#fff;
+  }
   @media (max-width: 1100px){
     .page-grid{
       grid-template-columns:1fr;
@@ -229,9 +255,24 @@
 
 {% block content %}
 <div class="page-grid">
+  <div class="top-actions" style="grid-column:1 / -1;">
+    <a class="top-link" href="{{ url_for('plantillas_page') }}">Ver todas las plantillas</a>
+
+    {% if selected_equipo %}
+      <a class="top-link" href="{{ url_for('equipos_page') }}">Volver a equipos maestro</a>
+
+      <a class="top-link primary" href="{{ url_for('plantillas_page') }}?equipo_id={{ selected_equipo['id'] }}&action=create">
+        Crear plantilla desde este equipo
+      </a>
+
+      <a class="top-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ selected_equipo['id'] }}&action=view">
+        Ver solo plantillas de este equipo
+      </a>
+    {% endif %}
+  </div>
   <section class="page-card">
     <h2>Nueva plantilla / variante</h2>
-    {% if selected_equipo %}
+    {% if selected_equipo and current_action == "create" %}
       <div class="context-box">
         <strong>Creando plantilla desde equipo maestro</strong>
         <span>
@@ -245,8 +286,8 @@
   <div class="field">
     <label for="modo_creacion">Modo de creación *</label>
     <select id="modo_creacion" name="modo_creacion" required onchange="toggleEquipoBaseField()">
-      <option value="desde_equipo" {% if selected_equipo_id %}selected{% endif %}>Crear desde equipo maestro</option>
-      <option value="vacia" {% if not selected_equipo_id %}selected{% endif %}>Plantilla vacía</option>
+      <option value="desde_equipo" {% if selected_equipo_id and current_action == "create" %}selected{% endif %}>Crear desde equipo maestro</option>
+      <option value="vacia" {% if not (selected_equipo_id and current_action == "create") %}selected{% endif %}>Plantilla vacía</option>
     </select>
   </div>
 
@@ -312,7 +353,7 @@
 
   <section class="page-card">
     <h2>Biblioteca de plantillas</h2>
-    {% if selected_equipo %}
+      {% if selected_equipo and filter_by_equipo %}
       <div class="context-box">
         <strong>Mostrando plantillas derivadas de este equipo</strong>
         <span>
@@ -518,7 +559,7 @@
 
 {% block scripts %}
 <script>
-  function toggleEquipoBaseField() {
+   function toggleEquipoBaseField() {
     const modo = document.getElementById("modo_creacion");
     const wrapper = document.getElementById("equipoBaseWrapper");
     const equipoSelect = document.getElementById("equipo_id");

@@ -346,8 +346,12 @@ def plantillas_page():
     conn = get_db_connection()
 
     equipo_id_raw = (request.args.get("equipo_id") or "").strip()
-    equipo_id = None
+    action = (request.args.get("action") or "").strip().lower()
 
+    if action not in {"create", "view"}:
+        action = ""
+
+    equipo_id = None
     if equipo_id_raw:
         try:
             equipo_id = int(equipo_id_raw)
@@ -361,7 +365,20 @@ def plantillas_page():
         ORDER BY id DESC
     """).fetchall()
 
+    selected_equipo = None
     if equipo_id:
+        selected_equipo = conn.execute("""
+            SELECT *
+            FROM equipos
+            WHERE id = ? AND activo = 1
+        """, (equipo_id,)).fetchone()
+
+        if not selected_equipo:
+            equipo_id = None
+
+    filter_by_equipo = bool(equipo_id and action == "view")
+
+    if filter_by_equipo:
         plantillas_rows = conn.execute("""
             SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
             FROM plantillas p
@@ -378,14 +395,6 @@ def plantillas_page():
             WHERE p.activo = 1
             ORDER BY p.id DESC
         """).fetchall()
-
-    selected_equipo = None
-    if equipo_id:
-        selected_equipo = conn.execute("""
-            SELECT *
-            FROM equipos
-            WHERE id = ? AND activo = 1
-        """, (equipo_id,)).fetchone()
 
     plantillas = []
     for p in plantillas_rows:
@@ -406,7 +415,9 @@ def plantillas_page():
         plantillas=plantillas,
         active_page="plantillas",
         selected_equipo=selected_equipo,
-        selected_equipo_id=equipo_id
+        selected_equipo_id=equipo_id,
+        current_action=action,
+        filter_by_equipo=filter_by_equipo
     )
 
 @app.route("/cotizaciones")
