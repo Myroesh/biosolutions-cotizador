@@ -153,6 +153,32 @@
     font-size:12px;
     font-weight:700;
   }
+  .image-preview-box{
+    margin-top:8px;
+    border:1px dashed #cbd5e1;
+    border-radius:12px;
+    background:#fff;
+    min-height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    padding:10px;
+  }
+
+  .image-preview-box img{
+    max-width:100%;
+    max-height:140px;
+    object-fit:contain;
+    display:block;
+  }
+
+  .image-preview-empty{
+    font-size:12px;
+    color:#94a3b8;
+    text-align:center;
+    line-height:1.5;
+  }
   @media (max-width: 1100px){
     .page-grid{
       grid-template-columns:1fr;
@@ -194,9 +220,21 @@
         </div>
       </div>
 
+   <div class="field">
+        <label for="imagen">Imagen base</label>
+        <input type="text" id="imagen" name="imagen" placeholder="/static/uploads/cotizaciones/archivo.jpg">
+      </div>
+
       <div class="field">
-        <label for="imagen">Ruta de imagen</label>
-        <input type="text" id="imagen" name="imagen" placeholder="equipos/yonker-8000b.jpg">
+        <label for="imagen_upload">Subir imagen</label>
+        <input type="file" id="imagen_upload" accept="image/*">
+        <div class="tiny-note" style="margin-top:6px;">
+          Puedes subir una imagen o pegar una ruta manual.
+        </div>
+
+        <div class="image-preview-box" id="equipoImagePreview">
+          <div class="image-preview-empty">Sin imagen seleccionada</div>
+        </div>
       </div>
 
       <div class="field">
@@ -272,4 +310,67 @@
     {% endif %}
   </section>
 </div>
+{% block scripts %}
+<script>
+  function renderImagePreview(container, imageUrl) {
+    if (!container) return;
+
+    const url = String(imageUrl || "").trim();
+    if (!url) {
+      container.innerHTML = `<div class="image-preview-empty">Sin imagen seleccionada</div>`;
+      return;
+    }
+
+    container.innerHTML = `<img src="${url}" alt="Preview imagen">`;
+  }
+
+  async function bindEquipoImageUpload() {
+    const fileInput = document.getElementById("imagen_upload");
+    const targetInput = document.getElementById("imagen");
+    const preview = document.getElementById("equipoImagePreview");
+
+    if (!fileInput || !targetInput || !preview) return;
+
+    targetInput.addEventListener("input", () => {
+      renderImagePreview(preview, targetInput.value);
+    });
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      try {
+        const res = await fetch("/upload-image", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alert(data.error || "No se pudo subir la imagen.");
+          return;
+        }
+
+        targetInput.value = data.url || "";
+        renderImagePreview(preview, targetInput.value);
+      } catch (err) {
+        console.error(err);
+        alert("Error subiendo imagen.");
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    renderImagePreview(preview, targetInput.value);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    bindEquipoImageUpload();
+  });
+</script>
+{% endblock %}
 {% endblock %}

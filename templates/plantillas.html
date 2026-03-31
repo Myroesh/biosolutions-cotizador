@@ -172,6 +172,32 @@
     background:#0b8fb0;
     color:#fff;
   }
+  .image-preview-box{
+    margin-top:8px;
+    border:1px dashed #cbd5e1;
+    border-radius:12px;
+    background:#fff;
+    min-height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    padding:10px;
+  }
+
+  .image-preview-box img{
+    max-width:100%;
+    max-height:140px;
+    object-fit:contain;
+    display:block;
+  }
+
+  .image-preview-empty{
+    font-size:12px;
+    color:#94a3b8;
+    text-align:center;
+    line-height:1.5;
+  }
   @media (max-width: 1100px){
     .page-grid{
       grid-template-columns:1fr;
@@ -317,7 +343,7 @@
   <div class="grid-2">
     <div class="field">
       <label for="precio_base">Precio base</label>
-      <input type="text" id="precio_base" name="precio_base" placeholder="10190.00">
+        <input type="number" id="precio_base" name="precio_base" placeholder="10190.00" step="0.01" min="0">
     </div>
 
     <div class="field">
@@ -328,9 +354,17 @@
     </div>
   </div>
 
+<div class="field">
+    <label for="plantilla_imagen">Imagen de plantilla</label>
+    <input type="text" id="plantilla_imagen" name="plantilla_imagen" placeholder="/static/uploads/cotizaciones/archivo.jpg">
+  </div>
+
   <div class="field">
-    <label for="plantilla_imagen">Ruta de imagen</label>
-    <input type="text" id="plantilla_imagen" name="plantilla_imagen" placeholder="equipos/yonker-8000b.jpg">
+    <label for="plantilla_imagen_upload">Subir imagen</label>
+    <input type="file" id="plantilla_imagen_upload" accept="image/*">
+    <div class="tiny-note" style="margin-top:6px;">
+      Puedes subir una imagen o pegar una ruta manual.
+    </div>
   </div>
 
   <div class="field">
@@ -446,7 +480,7 @@
                     <div class="mini-grid-2">
                       <div class="field">
                         <label>Precio base</label>
-                        <input type="text" name="precio_base" value="{{ p['precio_base'] or 0 }}">
+                        <input type="number" name="precio_base" value="{{ p['precio_base'] or 0 }}" step="0.01" min="0">
                       </div>
 
                       <div class="field">
@@ -457,9 +491,25 @@
                       </div>
                     </div>
 
+                   <div class="field">
+                      <label>Imagen de plantilla</label>
+                      <input type="text" name="plantilla_imagen" value="{{ p['imagen'] or '' }}" class="plantilla-image-target">
+                    </div>
+
                     <div class="field">
-                      <label>Ruta de imagen</label>
-                      <input type="text" name="plantilla_imagen" value="{{ p['imagen'] or '' }}">
+                      <label>Subir imagen</label>
+                      <input type="file" accept="image/*" class="plantilla-image-upload">
+                      <div class="tiny-note" style="margin-top:6px;">
+                        Puedes subir una imagen o pegar una ruta manual.
+                      </div>
+
+                      <div class="image-preview-box plantilla-image-preview">
+                        {% if p["imagen"] %}
+                          <img src="{{ p['imagen'] }}" alt="Preview imagen plantilla">
+                        {% else %}
+                          <div class="image-preview-empty">Sin imagen seleccionada</div>
+                        {% endif %}
+                      </div>
                     </div>
 
                     <div class="field">
@@ -574,7 +624,7 @@
     if (!usarEquipo) {
       equipoSelect.value = "";
     }
-  }
+  } 
 
   function removeRow(button) {
     const row = button.closest(".row-box");
@@ -607,9 +657,169 @@
     `;
     editor.appendChild(div);
   }
+  async function uploadImageFile(file) {
+    const formData = new FormData();
+    formData.append("image", file);
 
-  document.addEventListener("DOMContentLoaded", () => {
+    const res = await fetch("/upload-image", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "No se pudo subir la imagen.");
+    }
+
+    return data.url || "";
+  }
+
+  function bindCreateTemplateImageUpload() {
+    const fileInput = document.getElementById("plantilla_imagen_upload");
+    const targetInput = document.getElementById("plantilla_imagen");
+
+    if (!fileInput || !targetInput) return;
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const url = await uploadImageFile(file);
+        targetInput.value = url;
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Error subiendo imagen.");
+      } finally {
+        e.target.value = "";
+      }
+    });
+  }
+
+  function bindEditTemplateImageUploads() {
+    document.querySelectorAll(".plantilla-image-upload").forEach((fileInput) => {
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const form = fileInput.closest("form");
+        if (!form) return;
+
+        const targetInput = form.querySelector(".plantilla-image-target");
+        if (!targetInput) return;
+
+        try {
+          const url = await uploadImageFile(file);
+          targetInput.value = url;
+        } catch (err) {
+          console.error(err);
+          alert(err.message || "Error subiendo imagen.");
+        } finally {
+          e.target.value = "";
+        }
+      });
+    });
+  }
+    function renderImagePreview(container, imageUrl) {
+    if (!container) return;
+
+    const url = String(imageUrl || "").trim();
+    if (!url) {
+      container.innerHTML = `<div class="image-preview-empty">Sin imagen seleccionada</div>`;
+      return;
+    }
+
+    container.innerHTML = `<img src="${url}" alt="Preview imagen">`;
+  }
+
+  async function uploadImageFile(file) {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch("/upload-image", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "No se pudo subir la imagen.");
+    }
+
+    return data.url || "";
+  }
+
+  function bindCreateTemplateImageUpload() {
+    const fileInput = document.getElementById("plantilla_imagen_upload");
+    const targetInput = document.getElementById("plantilla_imagen");
+    const preview = document.getElementById("createTemplateImagePreview");
+
+    if (!fileInput || !targetInput || !preview) return;
+
+    targetInput.addEventListener("input", () => {
+      renderImagePreview(preview, targetInput.value);
+    });
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const url = await uploadImageFile(file);
+        targetInput.value = url;
+        renderImagePreview(preview, url);
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Error subiendo imagen.");
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    renderImagePreview(preview, targetInput.value);
+  }
+
+  function bindEditTemplateImageUploads() {
+    document.querySelectorAll(".plantilla-image-upload").forEach((fileInput) => {
+      const field = fileInput.closest(".field");
+      if (!field) return;
+
+      const preview = field.querySelector(".plantilla-image-preview");
+      const form = fileInput.closest("form");
+      if (!form || !preview) return;
+
+      const targetInput = form.querySelector(".plantilla-image-target");
+      if (!targetInput) return;
+
+      targetInput.addEventListener("input", () => {
+        renderImagePreview(preview, targetInput.value);
+      });
+
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          const url = await uploadImageFile(file);
+          targetInput.value = url;
+          renderImagePreview(preview, url);
+        } catch (err) {
+          console.error(err);
+          alert(err.message || "Error subiendo imagen.");
+        } finally {
+          e.target.value = "";
+        }
+      });
+
+      renderImagePreview(preview, targetInput.value);
+    });
+  }
+    document.addEventListener("DOMContentLoaded", () => {
     toggleEquipoBaseField();
+    bindCreateTemplateImageUpload();
+    bindEditTemplateImageUploads();
   });
 </script>
 
