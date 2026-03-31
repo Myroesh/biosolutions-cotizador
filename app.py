@@ -348,6 +348,119 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
+@app.route("/usuarios")
+@admin_required
+def usuarios_page():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    usuarios = conn.execute("""
+        SELECT id, username, nombre, rol, activo, creado_en
+        FROM usuarios
+        ORDER BY id DESC
+    """).fetchall()
+
+    conn.close()
+    return render_template("usuarios.html", usuarios=usuarios, active_page="usuarios")
+
+@app.route("/usuarios/nuevo", methods=["POST"])
+@admin_required
+def crear_usuario():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    username = (request.form.get("username") or "").strip()
+    nombre = (request.form.get("nombre") or "").strip()
+    password = request.form.get("password") or ""
+    rol = (request.form.get("rol") or "editor").strip().lower()
+
+    if rol not in {"admin", "editor", "visor"}:
+        rol = "editor"
+
+    if not username or not password:
+        conn.close()
+        flash("Usuario y contraseña son obligatorios.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    existing = conn.execute("""
+        SELECT id
+        FROM usuarios
+        WHERE username = ?
+    """, (username,)).fetchone()
+
+    if existing:
+        conn.close()
+        flash("Ese nombre de usuario ya existe.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    conn.execute("""
+        INSERT INTO usuarios (username, password_hash, nombre, rol, activo)
+        VALUES (?, ?, ?, ?, 1)
+    """, (
+        username,
+        generate_password_hash(password),
+        nombre,
+        rol
+    ))
+
+    conn.commit()
+    conn.close()
+
+    flash("Usuario creado correctamente.", "success")
+    return redirect(url_for("usuarios_page"))
+
+@app.route("/usuarios/<int:user_id>/rol", methods=["POST"])
+@admin_required
+def actualizar_rol_usuario(user_id):
+    nuevo_rol = (request.form.get("rol") or "").strip().lower()
+
+    if nuevo_rol not in {"admin", "editor", "visor"}:
+        flash("Rol inválido.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    current_user = get_current_user()
+    if current_user and current_user["id"] == user_id and nuevo_rol != "admin":
+        flash("No puedes quitarte a ti mismo el rol admin desde aquí.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    conn.execute("""
+        UPDATE usuarios
+        SET rol = ?
+        WHERE id = ? AND activo = 1
+    """, (nuevo_rol, user_id))
+
+    conn.commit()
+    conn.close()
+
+    flash("Rol actualizado correctamente.", "success")
+    return redirect(url_for("usuarios_page"))
+
+@app.route("/usuarios/<int:user_id>/desactivar", methods=["POST"])
+@admin_required
+def desactivar_usuario(user_id):
+    current_user = get_current_user()
+    if current_user and current_user["id"] == user_id:
+        flash("No puedes desactivarte a ti mismo.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    conn.execute("""
+        UPDATE usuarios
+        SET activo = 0
+        WHERE id = ?
+    """, (user_id,))
+
+    conn.commit()
+    conn.close()
+
+    flash("Usuario desactivado correctamente.", "success")
+    return redirect(url_for("usuarios_page"))
+    
 @app.route("/upload-image", methods=["POST"])
 def upload_image():
     ensure_upload_dir()
@@ -383,7 +496,7 @@ def upload_image():
 @login_required
 def cotizador():
     conn = get_db_connection()
-    ensure_payload_json_column(conn)
+    ensure_auth_schema(conn)
 
     plantillas = conn.execute("""
         SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
@@ -561,7 +674,7 @@ def plantillas_page():
 @login_required
 def cotizaciones_page():
     conn = get_db_connection()
-    ensure_payload_json_column(conn)
+    ensure_auth_schema(conn)
     cotizaciones = conn.execute("""
         SELECT
             c.*,
@@ -724,9 +837,8 @@ def guardar_cotizacion():
             "selectedItemId": selected_item_id
         }
         payload_json = json.dumps(full_payload, ensure_ascii=False)
-
-        conn = get_db_connection()
-        ensure_payload_json_column(conn)
+            conn = get_db_connection()
+            ensure_auth_schema(conn)
 
         if db_id:
             conn.execute("""
@@ -934,7 +1046,7 @@ def eliminar_plantilla(plantilla_id):
 @admin_required
 def eliminar_cotizacion(cotizacion_id):
     conn = get_db_connection()
-    ensure_payload_json_column(conn)
+    ensure_auth_schema(conn)
 
     cot = conn.execute("""
         SELECT id

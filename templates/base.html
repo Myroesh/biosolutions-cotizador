@@ -156,6 +156,9 @@
         <a href="{{ url_for('equipos_page') }}" class="{% if active_page == 'equipos' %}active{% endif %}">Equipos maestro</a>
         <a href="{{ url_for('plantillas_page') }}" class="{% if active_page == 'plantillas' %}active{% endif %}">Plantillas</a>
         <a href="{{ url_for('cotizaciones_page') }}" class="{% if active_page == 'cotizaciones' %}active{% endif %}">Cotizaciones</a>
+        {% if current_role == 'admin' %}
+          <a href="{{ url_for('usuarios_page') }}" class="{% if active_page == 'usuarios' %}active{% endif %}">Usuarios</a>
+        {% endif %}
       </nav>
 
       {% if current_user %}

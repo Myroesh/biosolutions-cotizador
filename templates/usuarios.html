@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-grid{
+    display:grid;
+    grid-template-columns: 420px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  .page-card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+
+  .page-card h2{
+    margin:0 0 14px;
+    color:#0a4570;
+    font-size:20px;
+  }
+
+  .field{
+    margin-bottom:12px;
+  }
+
+  .field label{
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+    font-weight:700;
+    color:#334155;
+  }
+
+  .field input,
+  .field select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .btn{
+    background:#0b8fb0;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .btn-danger{
+    background:#dc2626;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .btn-light{
+    background:#e2e8f0;
+    color:#0f172a;
+    border:none;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .lib-list{
+    display:grid;
+    gap:10px;
+  }
+
+  .lib-card{
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    padding:14px;
+    background:#f8fafc;
+  }
+
+  .lib-card strong{
+    display:block;
+    margin-bottom:6px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .lib-card span{
+    display:block;
+    font-size:13px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  .actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+    align-items:center;
+  }
+
+  .inline-form{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .inline-form select{
+    min-width:120px;
+    padding:8px 10px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    background:#fff;
+  }
+
+  .tiny-note{
+    font-size:12px;
+    color:#64748b;
+    line-height:1.6;
+  }
+
+  @media (max-width: 1100px){
+    .page-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="page-card">
+    <h2>Nuevo usuario</h2>
+
+    <form method="post" action="{{ url_for('crear_usuario') }}">
+      <div class="field">
+        <label for="username">Usuario *</label>
+        <input type="text" id="username" name="username" required>
+      </div>
+
+      <div class="field">
+        <label for="nombre">Nombre visible</label>
+        <input type="text" id="nombre" name="nombre">
+      </div>
+
+      <div class="field">
+        <label for="password">Contraseña *</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+
+      <div class="field">
+        <label for="rol">Rol *</label>
+        <select id="rol" name="rol" required>
+          <option value="admin">admin</option>
+          <option value="editor" selected>editor</option>
+          <option value="visor">visor</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn">Crear usuario</button>
+    </form>
+
+    <p class="tiny-note" style="margin-top:14px;">
+      Los administradores pueden crear usuarios y cambiar sus roles. Los usuarios desactivados ya no podrán iniciar sesión.
+    </p>
+  </section>
+
+  <section class="page-card">
+    <h2>Usuarios registrados</h2>
+
+    {% if usuarios %}
+      <div class="lib-list">
+        {% for u in usuarios %}
+          <div class="lib-card">
+            <strong>{{ u["username"] }}</strong>
+            <span>Nombre: {{ u["nombre"] or "N/D" }}</span>
+            <span>Rol actual: {{ u["rol"] }}</span>
+            <span>Activo: {% if u["activo"] %}Sí{% else %}No{% endif %}</span>
+            <span>Creado en: {{ u["creado_en"] or "N/D" }}</span>
+
+            <div class="actions">
+              {% if u["activo"] %}
+                <form method="post"
+                      action="{{ url_for('actualizar_rol_usuario', user_id=u['id']) }}"
+                      class="inline-form">
+                  <select name="rol">
+                    <option value="admin" {% if u["rol"] == "admin" %}selected{% endif %}>admin</option>
+                    <option value="editor" {% if u["rol"] == "editor" %}selected{% endif %}>editor</option>
+                    <option value="visor" {% if u["rol"] == "visor" %}selected{% endif %}>visor</option>
+                  </select>
+                  <button type="submit" class="btn-light">Actualizar rol</button>
+                </form>
+
+                {% if not (current_user and current_user["id"] == u["id"]) %}
+                  <form method="post"
+                        action="{{ url_for('desactivar_usuario', user_id=u['id']) }}"
+                        onsubmit="return confirm('¿Desactivar este usuario?');">
+                    <button type="submit" class="btn-danger">Desactivar</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="tiny-note">No hay usuarios cargados todavía.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
