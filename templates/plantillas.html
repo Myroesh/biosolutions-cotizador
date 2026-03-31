@@ -124,6 +124,28 @@
     color:#475569;
     line-height:1.6;
   }
+  .origin-pill{
+    display:inline-block;
+    margin-top:8px;
+    background:#eef6fb;
+    color:#0a4570;
+    border:1px solid #cfe4ef;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:700;
+  }
+
+  .danger-btn{
+    background:#dc2626;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
   @media (max-width: 1100px){
     .page-grid{
       grid-template-columns:1fr;
@@ -470,7 +492,16 @@
                       </div>
                     </div>
 
-                    <button type="submit" class="btn">Guardar cambios</button>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                      <button type="submit" class="btn">Guardar cambios</button>
+                    </div>
+                  </form>
+
+                  <form method="post"
+                        action="{{ url_for('eliminar_plantilla', plantilla_id=p['id']) }}"
+                        onsubmit="return confirm('¿Eliminar esta plantilla? Ya no aparecerá en la biblioteca ni en el cotizador.');"
+                        style="margin-top:10px;">
+                    <button type="submit" class="danger-btn">Eliminar plantilla</button>
                   </form>
                 </div>
               </details>

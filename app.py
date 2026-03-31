@@ -709,6 +709,85 @@ def crear_equipo():
 
     return redirect(url_for("equipos_page"))
 
+@app.route("/equipos/<int:equipo_id>/eliminar", methods=["POST"])
+def eliminar_equipo(equipo_id):
+    conn = get_db_connection()
+
+    equipo = conn.execute("""
+        SELECT id
+        FROM equipos
+        WHERE id = ? AND activo = 1
+    """, (equipo_id,)).fetchone()
+
+    if not equipo:
+        conn.close()
+        return redirect(url_for("equipos_page"))
+
+    conn.execute("""
+        UPDATE equipos
+        SET activo = 0
+        WHERE id = ?
+    """, (equipo_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("equipos_page"))
+
+
+@app.route("/plantillas/<int:plantilla_id>/eliminar", methods=["POST"])
+def eliminar_plantilla(plantilla_id):
+    conn = get_db_connection()
+
+    plantilla = conn.execute("""
+        SELECT id
+        FROM plantillas
+        WHERE id = ? AND activo = 1
+    """, (plantilla_id,)).fetchone()
+
+    if not plantilla:
+        conn.close()
+        return redirect(url_for("plantillas_page"))
+
+    conn.execute("DELETE FROM plantillas_especificaciones WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_usos WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_accesorios WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_ventajas WHERE plantilla_id = ?", (plantilla_id,))
+
+    conn.execute("""
+        UPDATE plantillas
+        SET activo = 0
+        WHERE id = ?
+    """, (plantilla_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("plantillas_page"))
+
+
+@app.route("/cotizaciones/<int:cotizacion_id>/eliminar", methods=["POST"])
+def eliminar_cotizacion(cotizacion_id):
+    conn = get_db_connection()
+    ensure_payload_json_column(conn)
+
+    cot = conn.execute("""
+        SELECT id
+        FROM cotizaciones
+        WHERE id = ?
+    """, (cotizacion_id,)).fetchone()
+
+    if not cot:
+        conn.close()
+        return redirect(url_for("cotizaciones_page"))
+
+    conn.execute("DELETE FROM cotizacion_items WHERE cotizacion_id = ?", (cotizacion_id,))
+    conn.execute("DELETE FROM cotizaciones WHERE id = ?", (cotizacion_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("cotizaciones_page"))
 
 @app.route("/plantillas/nueva", methods=["POST"])
 def crear_plantilla():

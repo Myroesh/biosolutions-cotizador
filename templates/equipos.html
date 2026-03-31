@@ -137,6 +137,10 @@
     background:#e2e8f0;
     color:#0f172a;
   }
+  .btn-link.danger{
+    background:#dc2626;
+    color:#fff;
+  }
 
   .origin-badge{
     display:inline-block;
@@ -252,6 +256,13 @@
               <a class="btn-link secondary" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}">
                 Ver plantillas
               </a>
+
+              <form method="post"
+                    action="{{ url_for('eliminar_equipo', equipo_id=equipo['id']) }}"
+                    onsubmit="return confirm('¿Eliminar este equipo maestro? Las plantillas ya creadas seguirán existiendo, pero el equipo dejará de aparecer en la biblioteca.');"
+                    style="display:inline;">
+                <button type="submit" class="btn-link danger">Eliminar</button>
+              </form>
             </div>
           </div>
         {% endfor %}
