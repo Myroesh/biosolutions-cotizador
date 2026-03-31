@@ -95,9 +95,19 @@
             {% if c["ciudad"] %}Ciudad: {{ c["ciudad"] }}{% endif %}
             {% if c["validez"] %} | Validez: {{ c["validez"] }}{% endif %}
           </span>
-          <span>
+         <span>
             Total: Bs. {{ c["total"] or 0 }}
             {% if c["estado"] %} | Estado: {{ c["estado"] }}{% endif %}
+          </span>
+
+          <span>
+            Creado por: {{ c["creado_por_username"] or "N/D" }}
+            {% if c["creado_en"] %} | Fecha creación: {{ c["creado_en"] }}{% endif %}
+          </span>
+
+          <span>
+            Actualizado por: {{ c["actualizado_por_username"] or "N/D" }}
+            {% if c["actualizado_en"] %} | Última actualización: {{ c["actualizado_en"] }}{% endif %}
           </span>
            <div class="actions">
             <a href="{{ url_for('cotizador') }}?cotizacion_id={{ c['id'] }}">Abrir en cotizador</a>

@@ -51,6 +51,50 @@
       background:#0b8fb0;
       color:#fff;
     }
+        .topbar-right{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .user-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:#eef3f7;
+      color:#0a4570;
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .logout-link{
+      text-decoration:none;
+      background:#dc2626;
+      color:#fff;
+      padding:9px 12px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .flash-wrap{
+      margin-bottom:16px;
+      display:grid;
+      gap:10px;
+    }
+
+    .flash-msg{
+      background:#fff7ed;
+      color:#9a3412;
+      border:1px solid #fed7aa;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:700;
+    }
     .page-shell{
       padding:20px;
     }
@@ -105,16 +149,35 @@
       <div class="topbar-title">Biosolutions Cotizador</div>
     </div>
 
-    <nav class="nav-links">
-      <a href="{{ url_for('dashboard') }}" class="{% if active_page == 'inicio' %}active{% endif %}">Inicio</a>
-      <a href="{{ url_for('cotizador') }}" class="{% if active_page == 'cotizador' %}active{% endif %}">Cotizador</a>
-      <a href="{{ url_for('equipos_page') }}" class="{% if active_page == 'equipos' %}active{% endif %}">Equipos maestro</a>
-      <a href="{{ url_for('plantillas_page') }}" class="{% if active_page == 'plantillas' %}active{% endif %}">Plantillas</a>
-      <a href="{{ url_for('cotizaciones_page') }}" class="{% if active_page == 'cotizaciones' %}active{% endif %}">Cotizaciones</a>
-    </nav>
+    <div class="topbar-right">
+      <nav class="nav-links">
+        <a href="{{ url_for('dashboard') }}" class="{% if active_page == 'inicio' %}active{% endif %}">Inicio</a>
+        <a href="{{ url_for('cotizador') }}" class="{% if active_page == 'cotizador' %}active{% endif %}">Cotizador</a>
+        <a href="{{ url_for('equipos_page') }}" class="{% if active_page == 'equipos' %}active{% endif %}">Equipos maestro</a>
+        <a href="{{ url_for('plantillas_page') }}" class="{% if active_page == 'plantillas' %}active{% endif %}">Plantillas</a>
+        <a href="{{ url_for('cotizaciones_page') }}" class="{% if active_page == 'cotizaciones' %}active{% endif %}">Cotizaciones</a>
+      </nav>
+
+      {% if current_user %}
+        <div class="user-chip">
+          {{ current_user["username"] }} · {{ current_user["rol"] }}
+        </div>
+        <a href="{{ url_for('logout') }}" class="logout-link">Salir</a>
+      {% endif %}
+    </div>
   </header>
 
   <main class="page-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap">
+          {% for category, message in messages %}
+            <div class="flash-msg">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     {% block content %}{% endblock %}
   </main>
 

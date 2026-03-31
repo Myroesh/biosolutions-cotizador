@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Biosolutions Cotizador</title>
+  <style>
+    body{
+      margin:0;
+      font-family:Arial, sans-serif;
+      background:#eef3f7;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      box-sizing:border-box;
+    }
+
+    .login-card{
+      width:100%;
+      max-width:420px;
+      background:#fff;
+      border:1px solid #dbe3ea;
+      border-radius:18px;
+      padding:24px;
+      box-shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+
+    .login-card img{
+      height:54px;
+      display:block;
+      margin:0 auto 14px;
+    }
+
+    .login-card h1{
+      margin:0 0 16px;
+      text-align:center;
+      color:#0a4570;
+      font-size:24px;
+    }
+
+    .field{
+      margin-bottom:14px;
+    }
+
+    .field label{
+      display:block;
+      margin-bottom:6px;
+      font-size:13px;
+      font-weight:700;
+      color:#334155;
+    }
+
+    .field input{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid #cbd5e1;
+      border-radius:10px;
+      font-size:14px;
+      box-sizing:border-box;
+    }
+
+    .btn{
+      width:100%;
+      background:#0b8fb0;
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:12px 14px;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .flash-wrap{
+      margin-bottom:14px;
+      display:grid;
+      gap:10px;
+    }
+
+    .flash-msg{
+      background:#fff7ed;
+      color:#9a3412;
+      border:1px solid #fed7aa;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:700;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions">
+    <h1>Biosolutions Cotizador</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap">
+          {% for category, message in messages %}
+            <div class="flash-msg">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <div class="field">
+        <label for="username">Usuario</label>
+        <input type="text" id="username" name="username" required>
+      </div>
+
+      <div class="field">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+
+      <button type="submit" class="btn">Ingresar</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 import json
 import os
 import sqlite3
 import uuid
-from datetime import date
+from datetime import date, datetime
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "biosolutions-dev-secret-change-this")
 DB_PATH = "biosolutions.db"
 
 UPLOAD_SUBDIR = os.path.join("uploads", "cotizaciones")
@@ -50,6 +53,101 @@ def ensure_payload_json_column(conn):
     if "payload_json" not in column_names:
         conn.execute("ALTER TABLE cotizaciones ADD COLUMN payload_json TEXT")
         conn.commit()
+
+def ensure_users_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            nombre TEXT,
+            rol TEXT NOT NULL DEFAULT 'editor',
+            activo INTEGER NOT NULL DEFAULT 1,
+            creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+
+
+def ensure_cotizaciones_audit_columns(conn):
+    columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
+    column_names = [col["name"] for col in columns]
+
+    if "creado_por_user_id" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN creado_por_user_id INTEGER")
+    if "actualizado_por_user_id" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN actualizado_por_user_id INTEGER")
+    if "creado_en" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN creado_en TEXT")
+    if "actualizado_en" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN actualizado_en TEXT")
+
+    conn.commit()
+
+
+def ensure_auth_schema(conn):
+    ensure_users_table(conn)
+    ensure_payload_json_column(conn)
+    ensure_cotizaciones_audit_columns(conn)
+
+
+def get_current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+
+    conn = get_db_connection()
+    user = conn.execute("""
+        SELECT id, username, nombre, rol, activo
+        FROM usuarios
+        WHERE id = ? AND activo = 1
+    """, (user_id,)).fetchone()
+    conn.close()
+    return user
+
+
+def login_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login", next=request.path))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+def editor_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            return redirect(url_for("login", next=request.path))
+        if user["rol"] not in ("admin", "editor"):
+            flash("No tienes permisos para realizar esta acción.", "error")
+            return redirect(url_for("dashboard"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            return redirect(url_for("login", next=request.path))
+        if user["rol"] != "admin":
+            flash("Solo un administrador puede realizar esta acción.", "error")
+            return redirect(url_for("dashboard"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+@app.context_processor
+def inject_auth_context():
+    user = get_current_user()
+    return {
+        "current_user": user,
+        "current_role": user["rol"] if user else None
+    }        
 
 def next_quote_number(conn):
     row = conn.execute("""
@@ -210,8 +308,45 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
         """, (plantilla_id, texto, idx))
 
 @app.route("/")
+@login_required
 def dashboard():
     return render_template("index.html", active_page="inicio")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+    conn.close()
+
+    if session.get("user_id"):
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+
+        conn = get_db_connection()
+        user = conn.execute("""
+            SELECT *
+            FROM usuarios
+            WHERE username = ? AND activo = 1
+        """, (username,)).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
+            next_url = request.args.get("next") or url_for("dashboard")
+            return redirect(next_url)
+
+        flash("Usuario o contraseña inválidos.", "error")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/upload-image", methods=["POST"])
 def upload_image():
@@ -245,6 +380,7 @@ def upload_image():
     })
 
 @app.route("/cotizador")
+@login_required
 def cotizador():
     conn = get_db_connection()
     ensure_payload_json_column(conn)
@@ -320,8 +456,8 @@ def cotizador():
         today=str(date.today())
     )
 
-
 @app.route("/equipos")
+@login_required
 def equipos_page():
     conn = get_db_connection()
 
@@ -342,6 +478,7 @@ def equipos_page():
     return render_template("equipos.html", equipos=equipos, active_page="equipos")
 
 @app.route("/plantillas")
+@login_required
 def plantillas_page():
     conn = get_db_connection()
 
@@ -419,21 +556,28 @@ def plantillas_page():
         current_action=action,
         filter_by_equipo=filter_by_equipo
     )
-
+    
 @app.route("/cotizaciones")
+@login_required
 def cotizaciones_page():
     conn = get_db_connection()
     ensure_payload_json_column(conn)
     cotizaciones = conn.execute("""
-        SELECT *
-        FROM cotizaciones
-        ORDER BY id DESC
+        SELECT
+            c.*,
+            uc.username AS creado_por_username,
+            ua.username AS actualizado_por_username
+        FROM cotizaciones c
+        LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
+        ORDER BY c.id DESC
     """).fetchall()
     conn.close()
     return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
 
 
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
+@editor_required
 def cotizacion_json(cotizacion_id):
     conn = get_db_connection()
     ensure_payload_json_column(conn)
@@ -536,6 +680,7 @@ def cotizacion_json(cotizacion_id):
 
 
 @app.route("/cotizaciones/guardar", methods=["POST"])
+@editor_required
 def guardar_cotizacion():
     conn = None
     try:
@@ -556,7 +701,9 @@ def guardar_cotizacion():
         forma_pago = (quotation.get("paymentTerms") or "").strip()
         observaciones = (quotation.get("notes") or "").strip()
         db_id = quotation.get("dbId")
-
+        current_user = get_current_user()
+        current_user_id = current_user["id"] if current_user else None
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         total = 0
         for item in items:
             try:
@@ -585,11 +732,13 @@ def guardar_cotizacion():
             conn.execute("""
                 UPDATE cotizaciones
                 SET numero = ?, fecha = ?, cliente = ?, atencion = ?, ciudad = ?,
-                    validez = ?, forma_pago = ?, observaciones = ?, total = ?, payload_json = ?
+                    validez = ?, forma_pago = ?, observaciones = ?, total = ?, payload_json = ?,
+                    actualizado_por_user_id = ?, actualizado_en = ?
                 WHERE id = ?
             """, (
                 numero, fecha, cliente, atencion, ciudad,
-                validez, forma_pago, observaciones, total, payload_json, db_id
+                validez, forma_pago, observaciones, total, payload_json,
+                current_user_id, now_str, db_id
             ))
             cotizacion_id = db_id
 
@@ -601,12 +750,14 @@ def guardar_cotizacion():
             cur = conn.execute("""
                 INSERT INTO cotizaciones (
                     numero, fecha, cliente, atencion, ciudad,
-                    validez, forma_pago, observaciones, total, estado, payload_json
+                    validez, forma_pago, observaciones, total, estado, payload_json,
+                    creado_por_user_id, actualizado_por_user_id, creado_en, actualizado_en
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador', ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador', ?, ?, ?, ?, ?)
             """, (
                 numero, fecha, cliente, atencion, ciudad,
-                validez, forma_pago, observaciones, total, payload_json
+                validez, forma_pago, observaciones, total, payload_json,
+                current_user_id, current_user_id, now_str, now_str
             ))
             cotizacion_id = cur.lastrowid
 
@@ -691,6 +842,7 @@ def guardar_cotizacion():
 
 
 @app.route("/equipos/nuevo", methods=["POST"])
+@editor_required
 def crear_equipo():
     nombre = request.form.get("nombre", "").strip()
     marca = request.form.get("marca", "").strip()
@@ -721,6 +873,7 @@ def crear_equipo():
     return redirect(url_for("equipos_page"))
 
 @app.route("/equipos/<int:equipo_id>/eliminar", methods=["POST"])
+@admin_required
 def eliminar_equipo(equipo_id):
     conn = get_db_connection()
 
@@ -745,8 +898,8 @@ def eliminar_equipo(equipo_id):
 
     return redirect(url_for("equipos_page"))
 
-
 @app.route("/plantillas/<int:plantilla_id>/eliminar", methods=["POST"])
+@admin_required
 def eliminar_plantilla(plantilla_id):
     conn = get_db_connection()
 
@@ -778,6 +931,7 @@ def eliminar_plantilla(plantilla_id):
 
 
 @app.route("/cotizaciones/<int:cotizacion_id>/eliminar", methods=["POST"])
+@admin_required
 def eliminar_cotizacion(cotizacion_id):
     conn = get_db_connection()
     ensure_payload_json_column(conn)
@@ -801,6 +955,7 @@ def eliminar_cotizacion(cotizacion_id):
     return redirect(url_for("cotizaciones_page"))
 
 @app.route("/plantillas/nueva", methods=["POST"])
+@editor_required
 def crear_plantilla():
     modo_creacion = request.form.get("modo_creacion", "vacia").strip()
     equipo_id_raw = request.form.get("equipo_id", "").strip()
@@ -890,6 +1045,7 @@ def crear_plantilla():
     return redirect(url_for("plantillas_page"))
 
 @app.route("/plantillas/<int:plantilla_id>/editar", methods=["POST"])
+@editor_required
 def editar_plantilla(plantilla_id):
     nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
     nombre_comercial = request.form.get("nombre_comercial", "").strip()
