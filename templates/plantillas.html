@@ -363,12 +363,16 @@
   </div>
 
   <div class="field">
-    <label for="plantilla_imagen_upload">Subir imagen</label>
-    <input type="file" id="plantilla_imagen_upload" accept="image/*">
-    <div class="tiny-note" style="margin-top:6px;">
-      Puedes subir una imagen o pegar una ruta manual.
-    </div>
+  <label for="plantilla_imagen_upload">Subir imagen</label>
+  <input type="file" id="plantilla_imagen_upload" accept="image/*">
+  <div class="tiny-note" style="margin-top:6px;">
+    Puedes subir una imagen o pegar una ruta manual.
   </div>
+
+  <div class="image-preview-box" id="createTemplateImagePreview">
+    <div class="image-preview-empty">Sin imagen seleccionada</div>
+  </div>
+</div>
 
   <div class="field">
     <label for="plantilla_descripcion_breve">Descripción breve</label>
@@ -620,7 +624,7 @@
 
 {% block scripts %}
 <script>
-   function toggleEquipoBaseField() {
+  function toggleEquipoBaseField() {
     const modo = document.getElementById("modo_creacion");
     const wrapper = document.getElementById("equipoBaseWrapper");
     const equipoSelect = document.getElementById("equipo_id");
@@ -635,7 +639,7 @@
     if (!usarEquipo) {
       equipoSelect.value = "";
     }
-  } 
+  }
 
   function removeRow(button) {
     const row = button.closest(".row-box");
@@ -668,71 +672,8 @@
     `;
     editor.appendChild(div);
   }
-  async function uploadImageFile(file) {
-    const formData = new FormData();
-    formData.append("image", file);
 
-    const res = await fetch("/upload-image", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.ok) {
-      throw new Error(data.error || "No se pudo subir la imagen.");
-    }
-
-    return data.url || "";
-  }
-
-  function bindCreateTemplateImageUpload() {
-    const fileInput = document.getElementById("plantilla_imagen_upload");
-    const targetInput = document.getElementById("plantilla_imagen");
-
-    if (!fileInput || !targetInput) return;
-
-    fileInput.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      try {
-        const url = await uploadImageFile(file);
-        targetInput.value = url;
-      } catch (err) {
-        console.error(err);
-        alert(err.message || "Error subiendo imagen.");
-      } finally {
-        e.target.value = "";
-      }
-    });
-  }
-
-  function bindEditTemplateImageUploads() {
-    document.querySelectorAll(".plantilla-image-upload").forEach((fileInput) => {
-      fileInput.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const form = fileInput.closest("form");
-        if (!form) return;
-
-        const targetInput = form.querySelector(".plantilla-image-target");
-        if (!targetInput) return;
-
-        try {
-          const url = await uploadImageFile(file);
-          targetInput.value = url;
-        } catch (err) {
-          console.error(err);
-          alert(err.message || "Error subiendo imagen.");
-        } finally {
-          e.target.value = "";
-        }
-      });
-    });
-  }
-    function renderImagePreview(container, imageUrl) {
+  function renderImagePreview(container, imageUrl) {
     if (!container) return;
 
     const url = String(imageUrl || "").trim();
@@ -827,11 +768,11 @@
       renderImagePreview(preview, targetInput.value);
     });
   }
-    document.addEventListener("DOMContentLoaded", () => {
+
+  document.addEventListener("DOMContentLoaded", () => {
     toggleEquipoBaseField();
     bindCreateTemplateImageUpload();
     bindEditTemplateImageUploads();
   });
 </script>
-
 {% endblock %}
