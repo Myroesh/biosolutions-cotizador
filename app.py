@@ -837,8 +837,8 @@ def guardar_cotizacion():
             "selectedItemId": selected_item_id
         }
         payload_json = json.dumps(full_payload, ensure_ascii=False)
-            conn = get_db_connection()
-            ensure_auth_schema(conn)
+        conn = get_db_connection()
+        ensure_auth_schema(conn)
 
         if db_id:
             conn.execute("""
