@@ -165,17 +165,25 @@
             {% endif %}
 
             {% if current_role in ['admin', 'editor'] and (c["estado_documental"] or "borrador") == "consolidada" %}
-              <form method="post"
-                    action="{{ url_for('generar_entrega_desde_cotizacion', cotizacion_id=c['id']) }}"
-                    class="inline-form">
-                <button type="submit" class="secondary-btn">Generar acta de entrega</button>
-              </form>
+              {% if (c["entregas_count"] or 0) == 0 %}
+                <form method="post"
+                      action="{{ url_for('generar_entrega_desde_cotizacion', cotizacion_id=c['id']) }}"
+                      class="inline-form">
+                  <button type="submit" class="secondary-btn">Generar acta de entrega</button>
+                </form>
+              {% else %}
+                <a href="{{ url_for('entregas_page') }}">Ver entrega</a>
+              {% endif %}
 
-              <form method="post"
-                    action="{{ url_for('generar_garantia_desde_cotizacion', cotizacion_id=c['id']) }}"
-                    class="inline-form">
-                <button type="submit" class="secondary-btn">Generar garantía</button>
-              </form>
+              {% if (c["garantias_count"] or 0) == 0 %}
+                <form method="post"
+                      action="{{ url_for('generar_garantia_desde_cotizacion', cotizacion_id=c['id']) }}"
+                      class="inline-form">
+                  <button type="submit" class="secondary-btn">Generar garantía</button>
+                </form>
+              {% else %}
+                <a href="{{ url_for('garantias_page') }}">Ver garantía</a>
+              {% endif %}
             {% endif %}
 
             {% if current_role == 'admin' %}

@@ -1507,10 +1507,25 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
         flash("Cotización no encontrada.", "error")
         return redirect(url_for("cotizaciones_page"))
 
-    if (cot["estado_documental"] or "borrador") != "consolidada":
+     if (cot["estado_documental"] or "borrador") != "consolidada":
         conn.close()
         flash("Primero debes consolidar la cotización antes de generar el acta de entrega.", "error")
         return redirect(url_for("cotizaciones_page"))
+
+    entrega_existente = conn.execute("""
+        SELECT id, numero_entrega
+        FROM entregas
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if entrega_existente:
+        conn.close()
+        flash(f"Esta cotización ya tiene un acta de entrega generada: {entrega_existente['numero_entrega']}.", "error")
+        return redirect(url_for("entregas_page"))
+
+    cot_payload = load_cotizacion_payload(conn, cotizacion_id)
 
     cot_payload = load_cotizacion_payload(conn, cotizacion_id)
     if not cot_payload:
@@ -1600,6 +1615,19 @@ def generar_garantia_desde_cotizacion(cotizacion_id):
         conn.close()
         flash("Primero debes consolidar la cotización antes de generar la garantía.", "error")
         return redirect(url_for("cotizaciones_page"))
+
+    garantia_existente = conn.execute("""
+        SELECT id, numero_garantia
+        FROM garantias
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if garantia_existente:
+        conn.close()
+        flash(f"Esta cotización ya tiene una garantía generada: {garantia_existente['numero_garantia']}.", "error")
+        return redirect(url_for("garantias_page"))
 
     cot_payload = load_cotizacion_payload(conn, cotizacion_id)
     if not cot_payload:

@@ -3,11 +3,29 @@
 {% block title %}Inicio - Biosolutions Cotizador{% endblock %}
 
 {% block content %}
-  <div class="dashboard-grid">
+  <  <div class="dashboard-grid">
     <div class="dash-card">
       <h3>Cotizador</h3>
       <p>Editor técnico-comercial multipágina para armar fichas, agregar varios equipos y exportar a PDF.</p>
       <a href="{{ url_for('cotizador') }}">Abrir cotizador</a>
+    </div>
+
+    <div class="dash-card">
+      <h3>Cotizaciones guardadas</h3>
+      <p>Revisar, abrir y editar cotizaciones guardadas. Desde una cotización consolidada podrás generar entrega y garantía.</p>
+      <a href="{{ url_for('cotizaciones_page') }}">Ver cotizaciones</a>
+    </div>
+
+    <div class="dash-card">
+      <h3>Entregas</h3>
+      <p>Consulta las actas de entrega generadas desde cotizaciones consolidadas y revisa su estado documental.</p>
+      <a href="{{ url_for('entregas_page') }}">Ver entregas</a>
+    </div>
+
+    <div class="dash-card">
+      <h3>Garantías</h3>
+      <p>Consulta garantías emitidas, vigentes, próximas a vencer y vencidas a partir de las compras realizadas.</p>
+      <a href="{{ url_for('garantias_page') }}">Ver garantías</a>
     </div>
 
     <div class="dash-card">
@@ -22,10 +40,12 @@
       <a href="{{ url_for('plantillas_page') }}">Ir a plantillas</a>
     </div>
 
-    <div class="dash-card">
-      <h3>Cotizaciones guardadas</h3>
-      <p>Revisar, abrir y editar cotizaciones ya emitidas como COT-001, COT-002 y siguientes.</p>
-      <a href="{{ url_for('cotizaciones_page') }}">Ver cotizaciones</a>
-    </div>
+    {% if current_role == 'admin' %}
+      <div class="dash-card">
+        <h3>Usuarios</h3>
+        <p>Administra usuarios, roles y acceso al sistema.</p>
+        <a href="{{ url_for('usuarios_page') }}">Gestionar usuarios</a>
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
