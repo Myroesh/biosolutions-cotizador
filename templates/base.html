@@ -156,6 +156,8 @@
         {% if current_role in ['admin', 'editor', 'visor'] %}
           <a href="{{ url_for('cotizador') }}" class="{% if active_page == 'cotizador' %}active{% endif %}">Cotizador</a>
           <a href="{{ url_for('cotizaciones_page') }}" class="{% if active_page == 'cotizaciones' %}active{% endif %}">Cotizaciones</a>
+          <a href="{{ url_for('entregas_page') }}" class="{% if active_page == 'entregas' %}active{% endif %}">Entregas</a>
+          <a href="{{ url_for('garantias_page') }}" class="{% if active_page == 'garantias' %}active{% endif %}">Garantías</a>
         {% endif %}
 
         {% if current_role in ['admin', 'editor', 'visor'] %}

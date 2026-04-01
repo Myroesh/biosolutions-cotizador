@@ -447,6 +447,197 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
             VALUES (?, ?, ?)
         """, (plantilla_id, texto, idx))
 
+def load_cotizacion_payload(conn, cotizacion_id):
+    cot = conn.execute("""
+        SELECT *
+        FROM cotizaciones
+        WHERE id = ?
+    """, (cotizacion_id,)).fetchone()
+
+    if not cot:
+        return None
+
+    payload_json = (cot["payload_json"] or "").strip()
+
+    if payload_json:
+        try:
+            payload = json.loads(payload_json)
+
+            if isinstance(payload, dict):
+                payload.setdefault("quotation", {})
+                payload.setdefault("items", [])
+                payload.setdefault("selectedItemId", None)
+
+                payload["quotation"]["dbId"] = cot["id"]
+                payload["quotation"]["number"] = payload["quotation"].get("number") or (cot["numero"] or "")
+                payload["quotation"]["date"] = payload["quotation"].get("date") or (cot["fecha"] or "")
+                payload["quotation"]["client"] = payload["quotation"].get("client") or (cot["cliente"] or "")
+                payload["quotation"]["attention"] = payload["quotation"].get("attention") or (cot["atencion"] or "")
+                payload["quotation"]["city"] = payload["quotation"].get("city") or (cot["ciudad"] or "")
+                payload["quotation"]["validity"] = payload["quotation"].get("validity") or (cot["validez"] or "")
+                payload["quotation"]["paymentTerms"] = payload["quotation"].get("paymentTerms") or (cot["forma_pago"] or "")
+                payload["quotation"]["notes"] = payload["quotation"].get("notes") or (cot["observaciones"] or "")
+                return payload
+        except Exception as e:
+            print("WARNING load_cotizacion_payload fallback:", e)
+
+    items = conn.execute("""
+        SELECT *
+        FROM cotizacion_items
+        WHERE cotizacion_id = ?
+        ORDER BY orden ASC, id ASC
+    """, (cotizacion_id,)).fetchall()
+
+    payload = {
+        "quotation": {
+            "dbId": cot["id"],
+            "number": cot["numero"] or "",
+            "date": cot["fecha"] or "",
+            "client": cot["cliente"] or "",
+            "attention": cot["atencion"] or "",
+            "city": cot["ciudad"] or "",
+            "validity": cot["validez"] or "",
+            "paymentTerms": cot["forma_pago"] or "",
+            "notes": cot["observaciones"] or ""
+        },
+        "items": [],
+        "selectedItemId": None
+    }
+
+    for row in items:
+        payload["items"].append({
+            "id": f"dbitem_{row['id']}",
+            "dbItemId": row["id"],
+            "title": row["nombre_editado"] or "",
+            "brand": row["marca_editada"] or "",
+            "model": row["modelo_editado"] or "",
+            "origin": "",
+            "warranty": "",
+            "price": str(row["precio_unitario"] or ""),
+            "quantity": str(row["cantidad"] or 1),
+            "showPrice": bool(row["mostrar_precio"]),
+            "subtitle": row["descripcion_breve_editada"] or "",
+            "descriptionLong": row["descripcion_larga_editada"] or "",
+            "highlights": [],
+            "specs": [],
+            "uses": [],
+            "accessories": [],
+            "advantages": [],
+            "imageSrc": f"/static/{row['imagen_editada']}" if row["imagen_editada"] else "",
+            "templateId": row["plantilla_id"]
+        })
+
+    if payload["items"]:
+        payload["selectedItemId"] = payload["items"][0]["id"]
+
+    return payload
+
+def build_initial_entrega_payload(cot_row, cot_payload, numero_entrega):
+    quotation = cot_payload.get("quotation", {}) or {}
+    items = cot_payload.get("items", []) or []
+
+    fecha_entrega = (quotation.get("date") or "").strip() or date.today().isoformat()
+    cliente = (quotation.get("client") or "").strip()
+    total = float(cot_row["total"] or 0)
+
+    entrega_items = []
+    for idx, item in enumerate(items):
+        try:
+            quantity = int(float(str(item.get("quantity", "1")).replace(",", "").strip() or 1))
+        except ValueError:
+            quantity = 1
+
+        if quantity < 1:
+            quantity = 1
+
+        try:
+            unit_price = float(str(item.get("price", "0")).replace(",", "").strip() or 0)
+        except ValueError:
+            unit_price = 0
+
+        entrega_items.append({
+            "id": item.get("id") or f"ent_item_{idx+1}",
+            "title": (item.get("title") or "").strip(),
+            "brand": (item.get("brand") or "").strip(),
+            "model": (item.get("model") or "").strip(),
+            "quantity": quantity,
+            "unitPrice": unit_price,
+            "totalPrice": round(unit_price * quantity, 2),
+            "serials": ["" for _ in range(quantity)]
+        })
+
+    return {
+        "document": {
+            "dbId": None,
+            "cotizacionId": cot_row["id"],
+            "number": numero_entrega,
+            "date": fecha_entrega,
+            "client": cliente,
+            "clientDocument": "",
+            "receivesName": cliente,
+            "deliversName": "Daniel André Bosco Saavedra",
+            "delivererText": "El señor Daniel André Bosco Saavedra con Cedula de Identidad No.8783262",
+            "introText": "Por medio del presente documento se deja constancia de la entrega de los siguientes equipos, en conformidad con lo acordado entre las partes."
+        },
+        "items": entrega_items,
+        "totals": {
+            "grandTotal": total
+        }
+    }
+
+
+def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
+    quotation = cot_payload.get("quotation", {}) or {}
+    items = cot_payload.get("items", []) or []
+
+    issue_date = (quotation.get("date") or "").strip() or date.today().isoformat()
+    expiry_date = add_one_year_safe(issue_date)
+    cliente = (quotation.get("client") or "").strip()
+    total = float(cot_row["total"] or 0)
+
+    garantia_items = []
+    for idx, item in enumerate(items):
+        try:
+            quantity = int(float(str(item.get("quantity", "1")).replace(",", "").strip() or 1))
+        except ValueError:
+            quantity = 1
+
+        if quantity < 1:
+            quantity = 1
+
+        try:
+            unit_price = float(str(item.get("price", "0")).replace(",", "").strip() or 0)
+        except ValueError:
+            unit_price = 0
+
+        garantia_items.append({
+            "id": item.get("id") or f"gar_item_{idx+1}",
+            "title": (item.get("title") or "").strip(),
+            "brand": (item.get("brand") or "").strip(),
+            "model": (item.get("model") or "").strip(),
+            "quantity": quantity,
+            "unitPrice": unit_price,
+            "totalPrice": round(unit_price * quantity, 2),
+            "serials": ["" for _ in range(quantity)]
+        })
+
+    return {
+        "document": {
+            "dbId": None,
+            "cotizacionId": cot_row["id"],
+            "number": numero_garantia,
+            "issueDate": issue_date,
+            "expiryDate": expiry_date,
+            "client": cliente,
+            "clientDocument": "",
+            "warrantyText": "BioSolutions otorga garantía de 1 año a partir de la fecha de compra contra defectos de fábrica o mal funcionamiento, siempre que el equipo haya sido utilizado correctamente y no presente daños por manipulación inadecuada, golpes, humedad, sobrecarga eléctrica o intervenciones no autorizadas."
+        },
+        "items": garantia_items,
+        "totals": {
+            "grandTotal": total
+        }
+    }
+
 @app.route("/")
 @login_required
 def dashboard():
@@ -838,7 +1029,56 @@ def cotizaciones_page():
     conn.close()
     return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
 
+@app.route("/entregas")
+@login_required
+def entregas_page():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
 
+    entregas = conn.execute("""
+        SELECT
+            e.*,
+            c.numero AS cotizacion_numero,
+            uc.username AS creado_por_username,
+            ua.username AS actualizado_por_username
+        FROM entregas e
+        LEFT JOIN cotizaciones c ON c.id = e.cotizacion_id
+        LEFT JOIN usuarios uc ON uc.id = e.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = e.actualizado_por_user_id
+        ORDER BY e.id DESC
+    """).fetchall()
+
+    conn.close()
+    return render_template("entregas.html", entregas=entregas, active_page="entregas")
+
+@app.route("/garantias")
+@login_required
+def garantias_page():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    garantias_rows = conn.execute("""
+        SELECT
+            g.*,
+            c.numero AS cotizacion_numero,
+            uc.username AS creado_por_username,
+            ua.username AS actualizado_por_username
+        FROM garantias g
+        LEFT JOIN cotizaciones c ON c.id = g.cotizacion_id
+        LEFT JOIN usuarios uc ON uc.id = g.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = g.actualizado_por_user_id
+        ORDER BY g.id DESC
+    """).fetchall()
+
+    garantias = []
+    for row in garantias_rows:
+        item = dict(row)
+        item["estado_calculado"] = get_garantia_status(row["fecha_vencimiento"])
+        item["dias_restantes"] = get_garantia_days_remaining(row["fecha_vencimiento"])
+        garantias.append(item)
+
+    conn.close()
+    return render_template("garantias.html", garantias=garantias, active_page="garantias")
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
 @editor_required
 def cotizacion_json(cotizacion_id):
@@ -1257,24 +1497,87 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
     ensure_auth_schema(conn)
 
     cot = conn.execute("""
-        SELECT id, numero, estado_documental
+        SELECT *
         FROM cotizaciones
         WHERE id = ?
     """, (cotizacion_id,)).fetchone()
 
-    conn.close()
-
     if not cot:
+        conn.close()
         flash("Cotización no encontrada.", "error")
         return redirect(url_for("cotizaciones_page"))
 
     if (cot["estado_documental"] or "borrador") != "consolidada":
+        conn.close()
         flash("Primero debes consolidar la cotización antes de generar el acta de entrega.", "error")
         return redirect(url_for("cotizaciones_page"))
 
-    flash("Base lista: en Fase D2 aquí generaremos el acta de entrega desde la cotización consolidada.", "success")
-    return redirect(url_for("cotizaciones_page"))
+    cot_payload = load_cotizacion_payload(conn, cotizacion_id)
+    if not cot_payload:
+        conn.close()
+        flash("No se pudo reconstruir la cotización para generar el acta de entrega.", "error")
+        return redirect(url_for("cotizaciones_page"))
 
+    numero_entrega = next_entrega_number(conn)
+    current_user = get_current_user()
+    current_user_id = current_user["id"] if current_user else None
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    entrega_payload = build_initial_entrega_payload(cot, cot_payload, numero_entrega)
+    payload_json = json.dumps(entrega_payload, ensure_ascii=False)
+
+    cur = conn.execute("""
+        INSERT INTO entregas (
+            cotizacion_id,
+            numero_entrega,
+            fecha_entrega,
+            cliente_nombre,
+            cliente_documento,
+            recibe_nombre,
+            entrega_nombre,
+            entrega_documento_texto,
+            texto_intro,
+            total,
+            payload_json,
+            estado,
+            creado_por_user_id,
+            actualizado_por_user_id,
+            creado_en,
+            actualizado_en
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrador', ?, ?, ?, ?)
+    """, (
+        cotizacion_id,
+        numero_entrega,
+        entrega_payload["document"]["date"],
+        entrega_payload["document"]["client"],
+        entrega_payload["document"]["clientDocument"],
+        entrega_payload["document"]["receivesName"],
+        entrega_payload["document"]["deliversName"],
+        entrega_payload["document"]["delivererText"],
+        entrega_payload["document"]["introText"],
+        float(cot["total"] or 0),
+        payload_json,
+        current_user_id,
+        current_user_id,
+        now_str,
+        now_str
+    ))
+
+    entrega_id = cur.lastrowid
+    entrega_payload["document"]["dbId"] = entrega_id
+
+    conn.execute("""
+        UPDATE entregas
+        SET payload_json = ?
+        WHERE id = ?
+    """, (json.dumps(entrega_payload, ensure_ascii=False), entrega_id))
+
+    conn.commit()
+    conn.close()
+
+    flash(f"Acta de entrega {numero_entrega} generada correctamente.", "success")
+    return redirect(url_for("entregas_page"))
 
 @app.route("/cotizaciones/<int:cotizacion_id>/generar-garantia", methods=["POST"])
 @editor_required
@@ -1283,24 +1586,82 @@ def generar_garantia_desde_cotizacion(cotizacion_id):
     ensure_auth_schema(conn)
 
     cot = conn.execute("""
-        SELECT id, numero, fecha, estado_documental
+        SELECT *
         FROM cotizaciones
         WHERE id = ?
     """, (cotizacion_id,)).fetchone()
 
-    conn.close()
-
     if not cot:
+        conn.close()
         flash("Cotización no encontrada.", "error")
         return redirect(url_for("cotizaciones_page"))
 
     if (cot["estado_documental"] or "borrador") != "consolidada":
+        conn.close()
         flash("Primero debes consolidar la cotización antes de generar la garantía.", "error")
         return redirect(url_for("cotizaciones_page"))
 
-    flash("Base lista: en Fase D2 aquí generaremos la garantía con vencimiento automático a 1 año.", "success")
-    return redirect(url_for("cotizaciones_page"))
+    cot_payload = load_cotizacion_payload(conn, cotizacion_id)
+    if not cot_payload:
+        conn.close()
+        flash("No se pudo reconstruir la cotización para generar la garantía.", "error")
+        return redirect(url_for("cotizaciones_page"))
 
+    numero_garantia = next_garantia_number(conn)
+    current_user = get_current_user()
+    current_user_id = current_user["id"] if current_user else None
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    garantia_payload = build_initial_garantia_payload(cot, cot_payload, numero_garantia)
+    payload_json = json.dumps(garantia_payload, ensure_ascii=False)
+
+    cur = conn.execute("""
+        INSERT INTO garantias (
+            cotizacion_id,
+            numero_garantia,
+            fecha_emision,
+            fecha_vencimiento,
+            cliente_nombre,
+            cliente_documento,
+            texto_garantia,
+            total,
+            payload_json,
+            creado_por_user_id,
+            actualizado_por_user_id,
+            creado_en,
+            actualizado_en
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        cotizacion_id,
+        numero_garantia,
+        garantia_payload["document"]["issueDate"],
+        garantia_payload["document"]["expiryDate"],
+        garantia_payload["document"]["client"],
+        garantia_payload["document"]["clientDocument"],
+        garantia_payload["document"]["warrantyText"],
+        float(cot["total"] or 0),
+        payload_json,
+        current_user_id,
+        current_user_id,
+        now_str,
+        now_str
+    ))
+
+    garantia_id = cur.lastrowid
+    garantia_payload["document"]["dbId"] = garantia_id
+
+    conn.execute("""
+        UPDATE garantias
+        SET payload_json = ?
+        WHERE id = ?
+    """, (json.dumps(garantia_payload, ensure_ascii=False), garantia_id))
+
+    conn.commit()
+    conn.close()
+
+    flash(f"Garantía {numero_garantia} generada correctamente.", "success")
+    return redirect(url_for("garantias_page"))
 @app.route("/plantillas/nueva", methods=["POST"])
 @editor_required
 def crear_plantilla():
