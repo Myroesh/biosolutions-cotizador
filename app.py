@@ -1080,7 +1080,7 @@ def garantias_page():
     conn.close()
     return render_template("garantias.html", garantias=garantias, active_page="garantias")
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
-@editor_required
+@login_required
 def cotizacion_json(cotizacion_id):
     conn = get_db_connection()
     ensure_payload_json_column(conn)
@@ -1507,7 +1507,7 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
         flash("Cotización no encontrada.", "error")
         return redirect(url_for("cotizaciones_page"))
 
-     if (cot["estado_documental"] or "borrador") != "consolidada":
+    if (cot["estado_documental"] or "borrador") != "consolidada":
         conn.close()
         flash("Primero debes consolidar la cotización antes de generar el acta de entrega.", "error")
         return redirect(url_for("cotizaciones_page"))
@@ -1527,7 +1527,7 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
 
     cot_payload = load_cotizacion_payload(conn, cotizacion_id)
 
-    cot_payload = load_cotizacion_payload(conn, cotizacion_id)
+    
     if not cot_payload:
         conn.close()
         flash("No se pudo reconstruir la cotización para generar el acta de entrega.", "error")
