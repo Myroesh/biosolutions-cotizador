@@ -3,7 +3,7 @@ import json
 import os
 import sqlite3
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -68,6 +68,147 @@ def ensure_users_table(conn):
     """)
     conn.commit()
 
+def ensure_cotizacion_documental_column(conn):
+    columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
+    column_names = [col["name"] for col in columns]
+
+    if "estado_documental" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN estado_documental TEXT DEFAULT 'borrador'")
+        conn.commit()
+
+
+def ensure_entregas_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS entregas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cotizacion_id INTEGER NOT NULL,
+            numero_entrega TEXT,
+            fecha_entrega TEXT,
+            cliente_nombre TEXT,
+            cliente_documento TEXT,
+            recibe_nombre TEXT,
+            entrega_nombre TEXT,
+            entrega_documento_texto TEXT,
+            texto_intro TEXT,
+            total REAL DEFAULT 0,
+            payload_json TEXT,
+            estado TEXT DEFAULT 'borrador',
+            creado_por_user_id INTEGER,
+            actualizado_por_user_id INTEGER,
+            creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+            actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+
+
+def ensure_garantias_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS garantias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cotizacion_id INTEGER NOT NULL,
+            numero_garantia TEXT,
+            fecha_emision TEXT,
+            fecha_vencimiento TEXT,
+            cliente_nombre TEXT,
+            cliente_documento TEXT,
+            texto_garantia TEXT,
+            total REAL DEFAULT 0,
+            payload_json TEXT,
+            creado_por_user_id INTEGER,
+            actualizado_por_user_id INTEGER,
+            creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+            actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+
+
+def ensure_documentos_schema(conn):
+    ensure_payload_json_column(conn)
+    ensure_cotizaciones_audit_columns(conn)
+    ensure_cotizacion_documental_column(conn)
+    ensure_entregas_table(conn)
+    ensure_garantias_table(conn)
+
+
+def next_entrega_number(conn):
+    row = conn.execute("""
+        SELECT numero_entrega
+        FROM entregas
+        WHERE numero_entrega IS NOT NULL AND numero_entrega != ''
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+    if not row or not row["numero_entrega"]:
+        return "ENT-001"
+
+    numero = row["numero_entrega"]
+    try:
+        last = int(numero.replace("ENT-", "").strip())
+    except ValueError:
+        last = 0
+
+    return f"ENT-{last + 1:03d}"
+
+
+def next_garantia_number(conn):
+    row = conn.execute("""
+        SELECT numero_garantia
+        FROM garantias
+        WHERE numero_garantia IS NOT NULL AND numero_garantia != ''
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+    if not row or not row["numero_garantia"]:
+        return "GAR-001"
+
+    numero = row["numero_garantia"]
+    try:
+        last = int(numero.replace("GAR-", "").strip())
+    except ValueError:
+        last = 0
+
+    return f"GAR-{last + 1:03d}"
+
+
+def add_one_year_safe(date_str):
+    if not date_str:
+        return ""
+
+    base_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    try:
+        return base_date.replace(year=base_date.year + 1).isoformat()
+    except ValueError:
+        # caso 29 de febrero
+        return (base_date + timedelta(days=365)).isoformat()
+
+
+def get_garantia_status(fecha_vencimiento_str):
+    if not fecha_vencimiento_str:
+        return "sin_fecha"
+
+    hoy = date.today()
+    venc = datetime.strptime(fecha_vencimiento_str, "%Y-%m-%d").date()
+    dias_restantes = (venc - hoy).days
+
+    if dias_restantes < 0:
+        return "vencida"
+    if dias_restantes <= 30:
+        return "proxima_a_vencer"
+    return "vigente"
+
+
+def get_garantia_days_remaining(fecha_vencimiento_str):
+    if not fecha_vencimiento_str:
+        return None
+
+    hoy = date.today()
+    venc = datetime.strptime(fecha_vencimiento_str, "%Y-%m-%d").date()
+    return (venc - hoy).days
 
 def ensure_cotizaciones_audit_columns(conn):
     columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
@@ -87,8 +228,7 @@ def ensure_cotizaciones_audit_columns(conn):
 
 def ensure_auth_schema(conn):
     ensure_users_table(conn)
-    ensure_payload_json_column(conn)
-    ensure_cotizaciones_audit_columns(conn)
+    ensure_documentos_schema(conn)
 
 
 def get_current_user():
@@ -676,15 +816,25 @@ def cotizaciones_page():
     conn = get_db_connection()
     ensure_auth_schema(conn)
     cotizaciones = conn.execute("""
-        SELECT
-            c.*,
-            uc.username AS creado_por_username,
-            ua.username AS actualizado_por_username
-        FROM cotizaciones c
-        LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
-        LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
-        ORDER BY c.id DESC
-    """).fetchall()
+    SELECT
+        c.*,
+        uc.username AS creado_por_username,
+        ua.username AS actualizado_por_username,
+        (
+            SELECT COUNT(1)
+            FROM entregas e
+            WHERE e.cotizacion_id = c.id
+        ) AS entregas_count,
+        (
+            SELECT COUNT(1)
+            FROM garantias g
+            WHERE g.cotizacion_id = c.id
+        ) AS garantias_count
+    FROM cotizaciones c
+    LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
+    LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
+    ORDER BY c.id DESC
+""").fetchall()
     conn.close()
     return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
 
@@ -1065,6 +1215,91 @@ def eliminar_cotizacion(cotizacion_id):
     conn.close()
 
     return redirect(url_for("cotizaciones_page"))
+@app.route("/cotizaciones/<int:cotizacion_id>/consolidar", methods=["POST"])
+@editor_required
+def consolidar_cotizacion(cotizacion_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    cot = conn.execute("""
+        SELECT id, estado_documental
+        FROM cotizaciones
+        WHERE id = ?
+    """, (cotizacion_id,)).fetchone()
+
+    if not cot:
+        conn.close()
+        flash("Cotización no encontrada.", "error")
+        return redirect(url_for("cotizaciones_page"))
+
+    current_user = get_current_user()
+    current_user_id = current_user["id"] if current_user else None
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn.execute("""
+        UPDATE cotizaciones
+        SET estado_documental = 'consolidada',
+            actualizado_por_user_id = ?,
+            actualizado_en = ?
+        WHERE id = ?
+    """, (current_user_id, now_str, cotizacion_id))
+
+    conn.commit()
+    conn.close()
+
+    flash("Cotización consolidada correctamente.", "success")
+    return redirect(url_for("cotizaciones_page"))
+
+@app.route("/cotizaciones/<int:cotizacion_id>/generar-entrega", methods=["POST"])
+@editor_required
+def generar_entrega_desde_cotizacion(cotizacion_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    cot = conn.execute("""
+        SELECT id, numero, estado_documental
+        FROM cotizaciones
+        WHERE id = ?
+    """, (cotizacion_id,)).fetchone()
+
+    conn.close()
+
+    if not cot:
+        flash("Cotización no encontrada.", "error")
+        return redirect(url_for("cotizaciones_page"))
+
+    if (cot["estado_documental"] or "borrador") != "consolidada":
+        flash("Primero debes consolidar la cotización antes de generar el acta de entrega.", "error")
+        return redirect(url_for("cotizaciones_page"))
+
+    flash("Base lista: en Fase D2 aquí generaremos el acta de entrega desde la cotización consolidada.", "success")
+    return redirect(url_for("cotizaciones_page"))
+
+
+@app.route("/cotizaciones/<int:cotizacion_id>/generar-garantia", methods=["POST"])
+@editor_required
+def generar_garantia_desde_cotizacion(cotizacion_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    cot = conn.execute("""
+        SELECT id, numero, fecha, estado_documental
+        FROM cotizaciones
+        WHERE id = ?
+    """, (cotizacion_id,)).fetchone()
+
+    conn.close()
+
+    if not cot:
+        flash("Cotización no encontrada.", "error")
+        return redirect(url_for("cotizaciones_page"))
+
+    if (cot["estado_documental"] or "borrador") != "consolidada":
+        flash("Primero debes consolidar la cotización antes de generar la garantía.", "error")
+        return redirect(url_for("cotizaciones_page"))
+
+    flash("Base lista: en Fase D2 aquí generaremos la garantía con vencimiento automático a 1 año.", "success")
+    return redirect(url_for("cotizaciones_page"))
 
 @app.route("/plantillas/nueva", methods=["POST"])
 @editor_required
@@ -1239,4 +1474,7 @@ def editar_plantilla(plantilla_id):
 
 if __name__ == "__main__":
     ensure_upload_dir()
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+    conn.close()
     app.run(host="0.0.0.0", port=8081, debug=True)
