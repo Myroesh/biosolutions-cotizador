@@ -979,123 +979,6 @@ def equipos_page():
     conn.close()
     return render_template("equipos.html", equipos=equipos, active_page="equipos")
 
-@app.route("/plantillas")
-@login_required
-def plantillas_page():
-    conn = get_db_connection()
-
-    equipo_id_raw = (request.args.get("equipo_id") or "").strip()
-    action = (request.args.get("action") or "").strip().lower()
-
-    if action not in {"create", "view"}:
-        action = ""
-
-    equipo_id = None
-    if equipo_id_raw:
-        try:
-            equipo_id = int(equipo_id_raw)
-        except ValueError:
-            equipo_id = None
-
-    equipos = conn.execute("""
-        SELECT *
-        FROM equipos
-        WHERE activo = 1
-        ORDER BY id DESC
-    """).fetchall()
-
-    selected_equipo = None
-    if equipo_id:
-        selected_equipo = conn.execute("""
-            SELECT *
-            FROM equipos
-            WHERE id = ? AND activo = 1
-        """, (equipo_id,)).fetchone()
-
-        if not selected_equipo:
-            equipo_id = None
-
-    filter_by_equipo = bool(equipo_id and action == "view")
-
-    if filter_by_equipo:
-        plantillas_rows = conn.execute("""
-            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
-            FROM plantillas p
-            LEFT JOIN equipos e ON e.id = p.equipo_id
-            WHERE p.activo = 1
-              AND p.equipo_id = ?
-            ORDER BY p.id DESC
-        """, (equipo_id,)).fetchall()
-    else:
-        plantillas_rows = conn.execute("""
-            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
-            FROM plantillas p
-            LEFT JOIN equipos e ON e.id = p.equipo_id
-            WHERE p.activo = 1
-            ORDER BY p.id DESC
-        """).fetchall()
-
-    plantillas = []
-    for p in plantillas_rows:
-        children = get_plantilla_children(conn, p["id"])
-
-        plantilla_dict = dict(p)
-        plantilla_dict["especificaciones"] = [dict(x) for x in children["especificaciones"]]
-        plantilla_dict["usos"] = [dict(x) for x in children["usos"]]
-        plantilla_dict["accesorios"] = [dict(x) for x in children["accesorios"]]
-        plantilla_dict["ventajas"] = [dict(x) for x in children["ventajas"]]
-        plantillas.append(plantilla_dict)
-
-    conn.close()
-
-    return render_template(
-        "plantillas.html",
-        equipos=equipos,
-        plantillas=plantillas,
-        active_page="plantillas",
-        selected_equipo=selected_equipo,
-        selected_equipo_id=equipo_id,
-        current_action=action,
-        filter_by_equipo=filter_by_equipo
-    )
-    
-@app.route("/cotizaciones")
-@login_required
-def cotizaciones_page():
-    conn = get_db_connection()
-    ensure_auth_schema(conn)
-    cotizaciones = conn.execute("""
-    SELECT
-        c.*,
-        uc.username AS creado_por_username,
-        ua.username AS actualizado_por_username,
-       (
-    SELECT COUNT(1)
-    FROM entregas e
-    WHERE e.cotizacion_id = c.id
-        ) AS entregas_count,
-        (
-            SELECT e.id
-            FROM entregas e
-            WHERE e.cotizacion_id = c.id
-            ORDER BY e.id DESC
-            LIMIT 1
-        ) AS ultima_entrega_id,
-        (
-            SELECT COUNT(1)
-            FROM garantias g
-            WHERE g.cotizacion_id = c.id
-        ) AS garantias_count
-    FROM cotizaciones c
-    LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
-    LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
-    ORDER BY c.id DESC
-""").fetchall()
-    conn.close()
-    return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
-
-@app.route("/entregas/<int:entrega_id>")
-@login_required
 @app.route("/entregas")
 @login_required
 def entregas_page():
@@ -1117,6 +1000,10 @@ def entregas_page():
 
     conn.close()
     return render_template("entregas.html", entregas=entregas, active_page="entregas")
+
+
+@app.route("/entregas/<int:entrega_id>")
+@login_required
 def entrega_detail_page(entrega_id):
     conn = get_db_connection()
     ensure_auth_schema(conn)
