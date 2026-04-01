@@ -112,12 +112,14 @@
            <div class="actions">
             <a href="{{ url_for('cotizador') }}?cotizacion_id={{ c['id'] }}">Abrir en cotizador</a>
 
-            <form method="post"
-                  action="{{ url_for('eliminar_cotizacion', cotizacion_id=c['id']) }}"
-                  onsubmit="return confirm('¿Eliminar esta cotización de la base de datos? Esta acción no se puede deshacer.');"
-                  style="display:inline;">
-              <button type="submit" class="danger-btn">Eliminar</button>
-            </form>
+         {% if current_role == 'admin' %}
+              <form method="post"
+                    action="{{ url_for('eliminar_cotizacion', cotizacion_id=c['id']) }}"
+                    onsubmit="return confirm('¿Eliminar esta cotización de la base de datos? Esta acción no se puede deshacer.');"
+                    style="display:inline;">
+                <button type="submit" class="danger-btn">Eliminar</button>
+              </form>
+            {% endif %}
           </div>
         </div>
       {% endfor %}

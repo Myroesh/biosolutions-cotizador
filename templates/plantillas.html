@@ -287,9 +287,11 @@
     {% if selected_equipo %}
       <a class="top-link" href="{{ url_for('equipos_page') }}">Volver a equipos maestro</a>
 
-      <a class="top-link primary" href="{{ url_for('plantillas_page') }}?equipo_id={{ selected_equipo['id'] }}&action=create">
-        Crear plantilla desde este equipo
-      </a>
+        {% if current_role in ['admin', 'editor'] %}
+        <a class="top-link primary" href="{{ url_for('plantillas_page') }}?equipo_id={{ selected_equipo['id'] }}&action=create">
+          Crear plantilla desde este equipo
+        </a>
+      {% endif %}
 
       <a class="top-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ selected_equipo['id'] }}&action=view">
         Ver solo plantillas de este equipo
@@ -297,7 +299,7 @@
     {% endif %}
   </div>
   <section class="page-card">
-    <h2>Nueva plantilla / variante</h2>
+    <h2>{% if current_role in ['admin', 'editor'] %}Nueva plantilla / variante{% else %}Detalle del módulo{% endif %}</h2>
     {% if selected_equipo and current_action == "create" %}
       <div class="context-box">
         <strong>Creando plantilla desde equipo maestro</strong>
@@ -308,7 +310,8 @@
         </span>
       </div>
     {% endif %}
-    <form method="post" action="/plantillas/nueva" id="plantillaForm">
+     {% if current_role in ['admin', 'editor'] %}
+  <form method="post" action="/plantillas/nueva" id="plantillaForm">
   <div class="field">
     <label for="modo_creacion">Modo de creación *</label>
     <select id="modo_creacion" name="modo_creacion" required onchange="toggleEquipoBaseField()">
@@ -378,8 +381,13 @@
   </div>
 
   <button type="submit" class="btn">Guardar plantilla / variante</button>
-</form>
 
+</form>
+  {% else %}
+      <p class="tiny-note">
+        Tu perfil es de solo lectura. Puedes consultar la biblioteca de plantillas, pero no crear ni modificar registros.
+      </p>
+    {% endif %}
     <p class="tiny-note" style="margin-top:14px;">
       Las plantillas son variantes comerciales reutilizables. Lo ideal es crearlas desde un equipo maestro y luego enriquecerlas con precio, accesorios, usos, ventajas y especificaciones.
     </p>
@@ -461,7 +469,7 @@
                 <span>- {{ v["texto"] }}</span>
               {% endfor %}
             {% endif %}
-
+            {% if current_role in ['admin', 'editor'] %}
             <div class="edit-card">
               <details>
                 <summary>Editar plantilla</summary>
@@ -588,15 +596,18 @@
                     </div>
                   </form>
 
-                  <form method="post"
-                        action="{{ url_for('eliminar_plantilla', plantilla_id=p['id']) }}"
-                        onsubmit="return confirm('¿Eliminar esta plantilla? Ya no aparecerá en la biblioteca ni en el cotizador.');"
-                        style="margin-top:10px;">
-                    <button type="submit" class="danger-btn">Eliminar plantilla</button>
-                  </form>
+                  {% if current_role == 'admin' %}
+                    <form method="post"
+                          action="{{ url_for('eliminar_plantilla', plantilla_id=p['id']) }}"
+                          onsubmit="return confirm('¿Eliminar esta plantilla? Ya no aparecerá en la biblioteca ni en el cotizador.');"
+                          style="margin-top:10px;">
+                      <button type="submit" class="danger-btn">Eliminar plantilla</button>
+                    </form>
+                  {% endif %}
                 </div>
               </details>
             </div>
+             {% endif %}
           </div>
         {% endfor %}
       </div>

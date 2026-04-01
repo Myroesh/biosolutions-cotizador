@@ -152,10 +152,17 @@
     <div class="topbar-right">
       <nav class="nav-links">
         <a href="{{ url_for('dashboard') }}" class="{% if active_page == 'inicio' %}active{% endif %}">Inicio</a>
-        <a href="{{ url_for('cotizador') }}" class="{% if active_page == 'cotizador' %}active{% endif %}">Cotizador</a>
-        <a href="{{ url_for('equipos_page') }}" class="{% if active_page == 'equipos' %}active{% endif %}">Equipos maestro</a>
-        <a href="{{ url_for('plantillas_page') }}" class="{% if active_page == 'plantillas' %}active{% endif %}">Plantillas</a>
-        <a href="{{ url_for('cotizaciones_page') }}" class="{% if active_page == 'cotizaciones' %}active{% endif %}">Cotizaciones</a>
+
+        {% if current_role in ['admin', 'editor', 'visor'] %}
+          <a href="{{ url_for('cotizador') }}" class="{% if active_page == 'cotizador' %}active{% endif %}">Cotizador</a>
+          <a href="{{ url_for('cotizaciones_page') }}" class="{% if active_page == 'cotizaciones' %}active{% endif %}">Cotizaciones</a>
+        {% endif %}
+
+        {% if current_role in ['admin', 'editor', 'visor'] %}
+          <a href="{{ url_for('equipos_page') }}" class="{% if active_page == 'equipos' %}active{% endif %}">Equipos maestro</a>
+          <a href="{{ url_for('plantillas_page') }}" class="{% if active_page == 'plantillas' %}active{% endif %}">Plantillas</a>
+        {% endif %}
+
         {% if current_role == 'admin' %}
           <a href="{{ url_for('usuarios_page') }}" class="{% if active_page == 'usuarios' %}active{% endif %}">Usuarios</a>
         {% endif %}

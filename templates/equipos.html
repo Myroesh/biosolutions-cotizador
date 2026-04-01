@@ -189,9 +189,9 @@
 
 {% block content %}
 <div class="page-grid">
-  <section class="page-card">
-    <h2>Nuevo equipo maestro</h2>
-
+ <section class="page-card">
+    <h2>{% if current_role in ['admin', 'editor'] %}Nuevo equipo maestro{% else %}Detalle del módulo{% endif %}</h2>
+    {% if current_role in ['admin', 'editor'] %}
     <form method="post" action="/equipos/nuevo">
       <div class="field">
         <label for="nombre">Nombre del equipo *</label>
@@ -249,7 +249,11 @@
 
       <button type="submit" class="btn">Guardar equipo maestro</button>
     </form>
-
+       {% else %}
+      <p class="tiny-note">
+        Tu perfil es de solo lectura. Puedes consultar la biblioteca de equipos maestro, pero no crear ni modificar registros.
+      </p>
+    {% endif %}
     <p class="tiny-note" style="margin-top:14px;">
       El equipo maestro es la ficha técnica base. Luego podrás crear variantes comerciales reutilizables a partir de este equipo.
     </p>
@@ -287,20 +291,24 @@
             {% endif %}
 
              <div class="card-actions">
-              <a class="btn-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}&action=create">
-                Crear plantilla
-              </a>
+               {% if current_role in ['admin', 'editor'] %}
+                <a class="btn-link" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}&action=create">
+                  Crear plantilla
+                </a>
+              {% endif %}
 
               <a class="btn-link secondary" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}&action=view">
                 Ver plantillas
               </a>
 
-              <form method="post"
-                    action="{{ url_for('eliminar_equipo', equipo_id=equipo['id']) }}"
-                    onsubmit="return confirm('¿Eliminar este equipo maestro? Las plantillas ya creadas seguirán existiendo, pero el equipo dejará de aparecer en la biblioteca.');"
-                    style="display:inline;">
-                <button type="submit" class="btn-link danger">Eliminar</button>
-              </form>
+              {% if current_role == 'admin' %}
+                <form method="post"
+                      action="{{ url_for('eliminar_equipo', equipo_id=equipo['id']) }}"
+                      onsubmit="return confirm('¿Eliminar este equipo maestro? Las plantillas ya creadas seguirán existiendo, pero el equipo dejará de aparecer en la biblioteca.');"
+                      style="display:inline;">
+                  <button type="submit" class="btn-link danger">Eliminar</button>
+                </form>
+              {% endif %}
             </div>
           </div>
         {% endfor %}
