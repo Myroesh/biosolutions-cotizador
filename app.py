@@ -1096,6 +1096,27 @@ def cotizaciones_page():
 
 @app.route("/entregas/<int:entrega_id>")
 @login_required
+@app.route("/entregas")
+@login_required
+def entregas_page():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    entregas = conn.execute("""
+        SELECT
+            e.*,
+            c.numero AS cotizacion_numero,
+            uc.username AS creado_por_username,
+            ua.username AS actualizado_por_username
+        FROM entregas e
+        LEFT JOIN cotizaciones c ON c.id = e.cotizacion_id
+        LEFT JOIN usuarios uc ON uc.id = e.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = e.actualizado_por_user_id
+        ORDER BY e.id DESC
+    """).fetchall()
+
+    conn.close()
+    return render_template("entregas.html", entregas=entregas, active_page="entregas")
 def entrega_detail_page(entrega_id):
     conn = get_db_connection()
     ensure_auth_schema(conn)
