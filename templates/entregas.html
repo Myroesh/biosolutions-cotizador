@@ -49,6 +49,22 @@
     color:#64748b;
     line-height:1.6;
   }
+  .actions{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .actions a{
+    text-decoration:none;
+    background:#0b8fb0;
+    color:#fff;
+    padding:8px 12px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:700;
+  }
 </style>
 {% endblock %}
 
@@ -72,10 +88,14 @@
           <span>
             Total: Bs. {{ e["total"] or 0 }}
           </span>
-          <span>
+           <span>
             Creado por: {{ e["creado_por_username"] or "N/D" }}
             {% if e["creado_en"] %} | Fecha creación: {{ e["creado_en"] }}{% endif %}
           </span>
+
+          <div class="actions">
+            <a href="{{ url_for('entrega_detail_page', entrega_id=e['id']) }}">Abrir / editar</a>
+          </div>
         </div>
       {% endfor %}
     </div>

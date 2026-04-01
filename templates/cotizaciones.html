@@ -172,8 +172,8 @@
                   <button type="submit" class="secondary-btn">Generar acta de entrega</button>
                 </form>
               {% else %}
-                <a href="{{ url_for('entregas_page') }}">Ver entrega</a>
-              {% endif %}
+                <a href="{{ url_for('entrega_detail_page', entrega_id=c['ultima_entrega_id']) }}">Ver entrega</a>
+                {% endif %}
 
               {% if (c["garantias_count"] or 0) == 0 %}
                 <form method="post"

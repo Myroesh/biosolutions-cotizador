@@ -638,6 +638,64 @@ def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
         }
     }
 
+def load_entrega_payload(conn, entrega_id):
+    row = conn.execute("""
+        SELECT *
+        FROM entregas
+        WHERE id = ?
+    """, (entrega_id,)).fetchone()
+
+    if not row:
+        return None, None
+
+    payload_json = (row["payload_json"] or "").strip()
+    payload = None
+
+    if payload_json:
+        try:
+            payload = json.loads(payload_json)
+        except Exception as e:
+            print("WARNING load_entrega_payload:", e)
+            payload = None
+
+    if not isinstance(payload, dict):
+        payload = {
+            "document": {
+                "dbId": row["id"],
+                "cotizacionId": row["cotizacion_id"],
+                "number": row["numero_entrega"] or "",
+                "date": row["fecha_entrega"] or "",
+                "client": row["cliente_nombre"] or "",
+                "clientDocument": row["cliente_documento"] or "",
+                "receivesName": row["recibe_nombre"] or "",
+                "deliversName": row["entrega_nombre"] or "",
+                "delivererText": row["entrega_documento_texto"] or "",
+                "introText": row["texto_intro"] or ""
+            },
+            "items": [],
+            "totals": {
+                "grandTotal": float(row["total"] or 0)
+            }
+        }
+
+    payload.setdefault("document", {})
+    payload.setdefault("items", [])
+    payload.setdefault("totals", {})
+
+    payload["document"]["dbId"] = row["id"]
+    payload["document"]["cotizacionId"] = row["cotizacion_id"]
+    payload["document"]["number"] = payload["document"].get("number") or (row["numero_entrega"] or "")
+    payload["document"]["date"] = payload["document"].get("date") or (row["fecha_entrega"] or "")
+    payload["document"]["client"] = payload["document"].get("client") or (row["cliente_nombre"] or "")
+    payload["document"]["clientDocument"] = payload["document"].get("clientDocument") or (row["cliente_documento"] or "")
+    payload["document"]["receivesName"] = payload["document"].get("receivesName") or (row["recibe_nombre"] or "")
+    payload["document"]["deliversName"] = payload["document"].get("deliversName") or (row["entrega_nombre"] or "")
+    payload["document"]["delivererText"] = payload["document"].get("delivererText") or (row["entrega_documento_texto"] or "")
+    payload["document"]["introText"] = payload["document"].get("introText") or (row["texto_intro"] or "")
+    payload["totals"]["grandTotal"] = float(payload["totals"].get("grandTotal") or row["total"] or 0)
+
+    return row, payload
+
 @app.route("/")
 @login_required
 def dashboard():
@@ -1011,11 +1069,18 @@ def cotizaciones_page():
         c.*,
         uc.username AS creado_por_username,
         ua.username AS actualizado_por_username,
+       (
+    SELECT COUNT(1)
+    FROM entregas e
+    WHERE e.cotizacion_id = c.id
+        ) AS entregas_count,
         (
-            SELECT COUNT(1)
+            SELECT e.id
             FROM entregas e
             WHERE e.cotizacion_id = c.id
-        ) AS entregas_count,
+            ORDER BY e.id DESC
+            LIMIT 1
+        ) AS ultima_entrega_id,
         (
             SELECT COUNT(1)
             FROM garantias g
@@ -1029,27 +1094,125 @@ def cotizaciones_page():
     conn.close()
     return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
 
-@app.route("/entregas")
+@app.route("/entregas/<int:entrega_id>")
 @login_required
-def entregas_page():
+def entrega_detail_page(entrega_id):
     conn = get_db_connection()
     ensure_auth_schema(conn)
 
-    entregas = conn.execute("""
-        SELECT
-            e.*,
-            c.numero AS cotizacion_numero,
-            uc.username AS creado_por_username,
-            ua.username AS actualizado_por_username
-        FROM entregas e
-        LEFT JOIN cotizaciones c ON c.id = e.cotizacion_id
-        LEFT JOIN usuarios uc ON uc.id = e.creado_por_user_id
-        LEFT JOIN usuarios ua ON ua.id = e.actualizado_por_user_id
-        ORDER BY e.id DESC
-    """).fetchall()
-
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
     conn.close()
-    return render_template("entregas.html", entregas=entregas, active_page="entregas")
+
+    if not entrega_row:
+        flash("Acta de entrega no encontrada.", "error")
+        return redirect(url_for("entregas_page"))
+
+    return render_template(
+        "entrega_detail.html",
+        entrega=entrega_row,
+        entrega_payload=entrega_payload,
+        active_page="entregas"
+    )
+
+@app.route("/entregas/<int:entrega_id>/guardar", methods=["POST"])
+@editor_required
+def guardar_entrega(entrega_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
+    if not entrega_row:
+        conn.close()
+        flash("Acta de entrega no encontrada.", "error")
+        return redirect(url_for("entregas_page"))
+
+    number = (request.form.get("number") or "").strip()
+    date_value = (request.form.get("date") or "").strip()
+    client = (request.form.get("client") or "").strip()
+    client_document = (request.form.get("clientDocument") or "").strip()
+    receives_name = (request.form.get("receivesName") or "").strip()
+    delivers_name = (request.form.get("deliversName") or "").strip()
+    deliverer_text = (request.form.get("delivererText") or "").strip()
+    intro_text = (request.form.get("introText") or "").strip()
+    estado = (request.form.get("estado") or "borrador").strip()
+
+    if estado not in {"borrador", "emitida"}:
+        estado = "borrador"
+
+    items = entrega_payload.get("items", []) or []
+
+    serials_flat = request.form.getlist("serials[]")
+    serial_idx = 0
+
+    for item in items:
+        quantity = int(item.get("quantity") or 1)
+        if quantity < 1:
+            quantity = 1
+
+        new_serials = []
+        for _ in range(quantity):
+            serial_value = ""
+            if serial_idx < len(serials_flat):
+                serial_value = (serials_flat[serial_idx] or "").strip()
+            new_serials.append(serial_value)
+            serial_idx += 1
+
+        item["serials"] = new_serials
+
+    entrega_payload["document"] = {
+        "dbId": entrega_id,
+        "cotizacionId": entrega_row["cotizacion_id"],
+        "number": number,
+        "date": date_value,
+        "client": client,
+        "clientDocument": client_document,
+        "receivesName": receives_name,
+        "deliversName": delivers_name,
+        "delivererText": deliverer_text,
+        "introText": intro_text
+    }
+
+    current_user = get_current_user()
+    current_user_id = current_user["id"] if current_user else None
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn.execute("""
+        UPDATE entregas
+        SET numero_entrega = ?,
+            fecha_entrega = ?,
+            cliente_nombre = ?,
+            cliente_documento = ?,
+            recibe_nombre = ?,
+            entrega_nombre = ?,
+            entrega_documento_texto = ?,
+            texto_intro = ?,
+            payload_json = ?,
+            estado = ?,
+            actualizado_por_user_id = ?,
+            actualizado_en = ?
+        WHERE id = ?
+    """, (
+        number,
+        date_value,
+        client,
+        client_document,
+        receives_name,
+        delivers_name,
+        deliverer_text,
+        intro_text,
+        json.dumps(entrega_payload, ensure_ascii=False),
+        estado,
+        current_user_id,
+        now_str,
+        entrega_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    flash("Acta de entrega actualizada correctamente.", "success")
+    return redirect(url_for("entrega_detail_page", entrega_id=entrega_id))
+
 
 @app.route("/garantias")
 @login_required

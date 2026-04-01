@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Acta de entrega - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-grid{
+    display:grid;
+    grid-template-columns: 440px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  .page-card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+
+  .page-card h2{
+    margin:0 0 14px;
+    color:#0a4570;
+    font-size:20px;
+  }
+
+  .field{
+    margin-bottom:12px;
+  }
+
+  .field label{
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+    font-weight:700;
+    color:#334155;
+  }
+
+  .field input,
+  .field textarea,
+  .field select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .field textarea{
+    min-height:90px;
+    resize:vertical;
+  }
+
+  .btn{
+    background:#0b8fb0;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .btn-light{
+    background:#e2e8f0;
+    color:#0f172a;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+  }
+
+  .inline-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+  }
+
+  .serial-block{
+    border:1px solid #dbe3ea;
+    border-radius:12px;
+    padding:12px;
+    background:#f8fafc;
+    margin-bottom:10px;
+  }
+
+  .serial-block strong{
+    display:block;
+    margin-bottom:8px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .serial-row{
+    display:grid;
+    grid-template-columns: 110px 1fr;
+    gap:10px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+
+  .doc-preview{
+    position:relative;
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    min-height:900px;
+    overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.05);
+  }
+
+  .doc-left{
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:22mm;
+    background:linear-gradient(180deg,#1b6f86 0%, #0a4570 100%);
+  }
+
+  .doc-content{
+    position:relative;
+    z-index:2;
+    padding:18mm 14mm 16mm 32mm;
+    color:#0f172a;
+    font-size:13px;
+    line-height:1.55;
+  }
+
+  .doc-title{
+    text-align:center;
+    font-size:22px;
+    font-weight:800;
+    color:#0a4570;
+    margin-bottom:18px;
+    text-transform:uppercase;
+  }
+
+  .doc-meta{
+    margin-bottom:14px;
+  }
+
+  .doc-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:16px 0;
+    font-size:12px;
+  }
+
+  .doc-table th,
+  .doc-table td{
+    border:1px solid #cbd5e1;
+    padding:8px 10px;
+    vertical-align:top;
+  }
+
+  .doc-table th{
+    background:#eef6fb;
+    color:#0a4570;
+    font-weight:800;
+  }
+
+  .doc-sign{
+    margin-top:34px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:26px;
+  }
+
+  .doc-sign-box{
+    text-align:center;
+    padding-top:18px;
+  }
+
+  .doc-sign-line{
+    border-top:1px solid #64748b;
+    margin-bottom:8px;
+    height:1px;
+  }
+
+  @media print{
+    .topbar,
+    .inline-actions,
+    .page-grid > .page-card:first-child{
+      display:none !important;
+    }
+
+    .page-grid{
+      display:block !important;
+    }
+
+    .doc-preview{
+      border:none !important;
+      box-shadow:none !important;
+      border-radius:0 !important;
+    }
+  }
+
+  @media (max-width: 1200px){
+    .page-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="page-card">
+    <h2>Editar acta de entrega</h2>
+
+    <form method="post" action="{{ url_for('guardar_entrega', entrega_id=entrega['id']) }}">
+      <div class="field">
+        <label for="number">Número</label>
+        <input type="text" id="number" name="number" value="{{ entrega_payload['document']['number'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="date">Fecha</label>
+        <input type="date" id="date" name="date" value="{{ entrega_payload['document']['date'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="client">Cliente</label>
+        <input type="text" id="client" name="client" value="{{ entrega_payload['document']['client'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="clientDocument">Documento cliente</label>
+        <input type="text" id="clientDocument" name="clientDocument" value="{{ entrega_payload['document']['clientDocument'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="receivesName">Nombre de quien recibe</label>
+        <input type="text" id="receivesName" name="receivesName" value="{{ entrega_payload['document']['receivesName'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="deliversName">Nombre de quien entrega</label>
+        <input type="text" id="deliversName" name="deliversName" value="{{ entrega_payload['document']['deliversName'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="delivererText">Texto del representante</label>
+        <textarea id="delivererText" name="delivererText">{{ entrega_payload['document']['delivererText'] or '' }}</textarea>
+      </div>
+
+      <div class="field">
+        <label for="introText">Texto introductorio</label>
+        <textarea id="introText" name="introText">{{ entrega_payload['document']['introText'] or '' }}</textarea>
+      </div>
+
+      <div class="field">
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">
+          <option value="borrador" {% if (entrega['estado'] or 'borrador') == 'borrador' %}selected{% endif %}>borrador</option>
+          <option value="emitida" {% if entrega['estado'] == 'emitida' %}selected{% endif %}>emitida</option>
+        </select>
+      </div>
+
+      <h2 style="margin-top:22px; font-size:18px;">Seriales por equipo</h2>
+
+      {% for item in entrega_payload['items'] %}
+        <div class="serial-block">
+          <strong>
+            {{ item['title'] or 'Equipo' }}
+            {% if item['brand'] %} - {{ item['brand'] }}{% endif %}
+            {% if item['model'] %} {{ item['model'] }}{% endif %}
+            | Cantidad: {{ item['quantity'] or 1 }}
+          </strong>
+
+          {% for serial in item['serials'] %}
+            <div class="serial-row">
+              <span>Serie {{ loop.index }}</span>
+              <input type="text" name="serials[]" value="{{ serial or '' }}">
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      <div class="inline-actions">
+        {% if current_role in ['admin', 'editor'] %}
+          <button type="submit" class="btn">Guardar cambios</button>
+        {% endif %}
+        <a href="{{ url_for('entregas_page') }}" class="btn-light">Volver al listado</a>
+        <button type="button" class="btn-light" onclick="window.print()">Imprimir</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="doc-preview">
+    <div class="doc-left"></div>
+    <div class="doc-content">
+      <div class="doc-title">Acta de Entrega</div>
+
+      <div class="doc-meta">
+        <strong>Número:</strong> {{ entrega_payload['document']['number'] or '' }}<br>
+        <strong>Fecha:</strong> {{ entrega_payload['document']['date'] or '' }}
+      </div>
+
+      <p>
+        {{ entrega_payload['document']['delivererText'] or '' }}
+        {% if entrega_payload['document']['receivesName'] %}
+          hace entrega a <strong>{{ entrega_payload['document']['receivesName'] }}</strong>
+        {% endif %}
+        {% if entrega_payload['document']['clientDocument'] %}
+          con documento <strong>{{ entrega_payload['document']['clientDocument'] }}</strong>
+        {% endif %}
+        del siguiente equipamiento:
+      </p>
+
+      <p>{{ entrega_payload['document']['introText'] or '' }}</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th>Marca / Modelo</th>
+            <th>Cant.</th>
+            <th>Seriales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in entrega_payload['items'] %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item['title'] or '' }}</td>
+              <td>
+                {% if item['brand'] %}{{ item['brand'] }}{% endif %}
+                {% if item['model'] %} / {{ item['model'] }}{% endif %}
+              </td>
+              <td>{{ item['quantity'] or 1 }}</td>
+              <td>
+                {% for serial in item['serials'] %}
+                  {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <p><strong>Total referencial:</strong> Bs. {{ entrega_payload['totals']['grandTotal'] or 0 }}</p>
+
+      <div class="doc-sign">
+        <div class="doc-sign-box">
+          <div class="doc-sign-line"></div>
+          <div>Entrega</div>
+          <div>{{ entrega_payload['document']['deliversName'] or '' }}</div>
+        </div>
+
+        <div class="doc-sign-box">
+          <div class="doc-sign-line"></div>
+          <div>Recibe</div>
+          <div>{{ entrega_payload['document']['receivesName'] or '' }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
