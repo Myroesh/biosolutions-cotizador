@@ -1451,16 +1451,9 @@ def cotizaciones_page():
             ua.username AS actualizado_por_username,
             (
                 SELECT COUNT(1)
-                FROM garantias g
-                WHERE g.cotizacion_id = c.id
-            ) AS garantias_count,
-            (
-                SELECT g.id
-                FROM garantias g
-                WHERE g.cotizacion_id = c.id
-                ORDER BY g.id DESC
-                LIMIT 1
-            ) AS ultima_garantia_id
+                FROM entregas e
+                WHERE e.cotizacion_id = c.id
+            ) AS entregas_count,
             (
                 SELECT e.id
                 FROM entregas e
@@ -1472,7 +1465,14 @@ def cotizaciones_page():
                 SELECT COUNT(1)
                 FROM garantias g
                 WHERE g.cotizacion_id = c.id
-            ) AS garantias_count
+            ) AS garantias_count,
+            (
+                SELECT g.id
+                FROM garantias g
+                WHERE g.cotizacion_id = c.id
+                ORDER BY g.id DESC
+                LIMIT 1
+            ) AS ultima_garantia_id
         FROM cotizaciones c
         LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
         LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
