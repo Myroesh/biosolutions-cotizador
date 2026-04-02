@@ -776,10 +776,36 @@ def load_garantia_payload(conn, garantia_id):
     return row, payload
 
 
+def copy_serials_between_payloads(source_payload, target_payload):
+    if not isinstance(source_payload, dict) or not isinstance(target_payload, dict):
+        return target_payload
+
+    source_items = source_payload.get("items", []) or []
+    target_items = target_payload.get("items", []) or []
+
+    for idx, source_item in enumerate(source_items):
+        if idx >= len(target_items):
+            continue
+
+        source_serials = list(source_item.get("serials", []) or [])
+        target_quantity = int(target_items[idx].get("quantity") or 1)
+
+        if target_quantity < 1:
+            target_quantity = 1
+
+        normalized_serials = []
+        for i in range(target_quantity):
+            if i < len(source_serials):
+                normalized_serials.append((source_serials[i] or "").strip())
+            else:
+                normalized_serials.append("")
+
+        target_items[idx]["serials"] = normalized_serials
+
+    target_payload["items"] = target_items
+    return target_payload
 
 def sync_entrega_serials_to_garantia(conn, cotizacion_id, source_entrega_payload):
-    garantia_row, garantia_payload = None, None
-
     garantia = conn.execute("""
         SELECT id
         FROM garantias
@@ -795,15 +821,7 @@ def sync_entrega_serials_to_garantia(conn, cotizacion_id, source_entrega_payload
     if not garantia_row or not garantia_payload:
         return
 
-    source_items = source_entrega_payload.get("items", []) or []
-    target_items = garantia_payload.get("items", []) or []
-
-    for idx, source_item in enumerate(source_items):
-        if idx >= len(target_items):
-            continue
-        target_items[idx]["serials"] = list(source_item.get("serials", []) or [])
-
-    garantia_payload["items"] = target_items
+    garantia_payload = copy_serials_between_payloads(source_entrega_payload, garantia_payload)
 
     conn.execute("""
         UPDATE garantias
@@ -813,7 +831,6 @@ def sync_entrega_serials_to_garantia(conn, cotizacion_id, source_entrega_payload
         json.dumps(garantia_payload, ensure_ascii=False),
         garantia_row["id"]
     ))
-
 
 def sync_garantia_serials_to_entrega(conn, cotizacion_id, source_garantia_payload):
     entrega = conn.execute("""
@@ -831,15 +848,7 @@ def sync_garantia_serials_to_entrega(conn, cotizacion_id, source_garantia_payloa
     if not entrega_row or not entrega_payload:
         return
 
-    source_items = source_garantia_payload.get("items", []) or []
-    target_items = entrega_payload.get("items", []) or []
-
-    for idx, source_item in enumerate(source_items):
-        if idx >= len(target_items):
-            continue
-        target_items[idx]["serials"] = list(source_item.get("serials", []) or [])
-
-    entrega_payload["items"] = target_items
+    entrega_payload = copy_serials_between_payloads(source_garantia_payload, entrega_payload)
 
     conn.execute("""
         UPDATE entregas
@@ -2080,6 +2089,23 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     entrega_payload = build_initial_entrega_payload(cot, cot_payload, numero_entrega)
+
+    garantia_existente = conn.execute("""
+        SELECT id
+        FROM garantias
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if garantia_existente:
+        _, garantia_payload_existente = load_garantia_payload(conn, garantia_existente["id"])
+        if garantia_payload_existente:
+            entrega_payload = copy_serials_between_payloads(
+                garantia_payload_existente,
+                entrega_payload
+            )
+
     payload_json = json.dumps(entrega_payload, ensure_ascii=False)
 
     cur = conn.execute("""
@@ -2332,6 +2358,23 @@ def generar_garantia_desde_cotizacion(cotizacion_id):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     garantia_payload = build_initial_garantia_payload(cot, cot_payload, numero_garantia)
+
+    entrega_existente = conn.execute("""
+        SELECT id
+        FROM entregas
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if entrega_existente:
+        _, entrega_payload_existente = load_entrega_payload(conn, entrega_existente["id"])
+        if entrega_payload_existente:
+            garantia_payload = copy_serials_between_payloads(
+                entrega_payload_existente,
+                garantia_payload
+            )
+
     payload_json = json.dumps(garantia_payload, ensure_ascii=False)
 
     cur = conn.execute("""
