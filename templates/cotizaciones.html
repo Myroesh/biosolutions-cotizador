@@ -182,7 +182,7 @@
                   <button type="submit" class="secondary-btn">Generar garantía</button>
                 </form>
               {% else %}
-                <a href="{{ url_for('garantias_page') }}">Ver garantía</a>
+                <a href="{{ url_for('garantia_detail_page', garantia_id=c['ultima_garantia_id']) }}">Ver garantía</a>
               {% endif %}
             {% endif %}
 

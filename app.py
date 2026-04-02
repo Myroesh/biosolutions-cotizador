@@ -717,7 +717,63 @@ def load_entrega_payload(conn, entrega_id):
 
     return row, payload
 
+# =========================
+# Rutas Garantía
+# =========================
 
+def load_garantia_payload(conn, garantia_id):
+    row = conn.execute("""
+        SELECT *
+        FROM garantias
+        WHERE id = ?
+    """, (garantia_id,)).fetchone()
+
+    if not row:
+        return None, None
+
+    payload_json = (row["payload_json"] or "").strip()
+    payload = None
+
+    if payload_json:
+        try:
+            payload = json.loads(payload_json)
+        except Exception as e:
+            print("WARNING load_garantia_payload:", e)
+            payload = None
+
+    if not isinstance(payload, dict):
+        payload = {
+            "document": {
+                "dbId": row["id"],
+                "cotizacionId": row["cotizacion_id"],
+                "number": row["numero_garantia"] or "",
+                "issueDate": row["fecha_emision"] or "",
+                "expiryDate": row["fecha_vencimiento"] or "",
+                "client": row["cliente_nombre"] or "",
+                "clientDocument": row["cliente_documento"] or "",
+                "warrantyText": row["texto_garantia"] or ""
+            },
+            "items": [],
+            "totals": {
+                "grandTotal": float(row["total"] or 0)
+            }
+        }
+
+    payload.setdefault("document", {})
+    payload.setdefault("items", [])
+    payload.setdefault("totals", {})
+
+    payload["document"]["dbId"] = row["id"]
+    payload["document"]["cotizacionId"] = row["cotizacion_id"]
+    payload["document"]["number"] = payload["document"].get("number") or (row["numero_garantia"] or "")
+    payload["document"]["issueDate"] = payload["document"].get("issueDate") or (row["fecha_emision"] or "")
+    payload["document"]["expiryDate"] = payload["document"].get("expiryDate") or (row["fecha_vencimiento"] or "")
+    payload["document"]["client"] = payload["document"].get("client") or (row["cliente_nombre"] or "")
+    payload["document"]["clientDocument"] = payload["document"].get("clientDocument") or (row["cliente_documento"] or "")
+    payload["document"]["warrantyText"] = payload["document"].get("warrantyText") or (row["texto_garantia"] or "")
+    payload["totals"]["grandTotal"] = float(payload["totals"].get("grandTotal") or row["total"] or 0)
+
+    return row, payload
 # =========================
 # Rutas base / auth
 # =========================
@@ -1395,9 +1451,16 @@ def cotizaciones_page():
             ua.username AS actualizado_por_username,
             (
                 SELECT COUNT(1)
-                FROM entregas e
-                WHERE e.cotizacion_id = c.id
-            ) AS entregas_count,
+                FROM garantias g
+                WHERE g.cotizacion_id = c.id
+            ) AS garantias_count,
+            (
+                SELECT g.id
+                FROM garantias g
+                WHERE g.cotizacion_id = c.id
+                ORDER BY g.id DESC
+                LIMIT 1
+            ) AS ultima_garantia_id
             (
                 SELECT e.id
                 FROM entregas e
@@ -2024,6 +2087,115 @@ def garantias_page():
     conn.close()
     return render_template("garantias.html", garantias=garantias, active_page="garantias")
 
+@app.route("/garantias/<int:garantia_id>")
+@login_required
+def garantia_detail_page(garantia_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    garantia_row, garantia_payload = load_garantia_payload(conn, garantia_id)
+    conn.close()
+
+    if not garantia_row:
+        flash("Garantía no encontrada.", "error")
+        return redirect(url_for("garantias_page"))
+
+    estado_calculado = get_garantia_status(garantia_payload["document"].get("expiryDate"))
+    dias_restantes = get_garantia_days_remaining(garantia_payload["document"].get("expiryDate"))
+
+    return render_template(
+        "garantia_detail.html",
+        garantia=garantia_row,
+        garantia_payload=garantia_payload,
+        estado_calculado=estado_calculado,
+        dias_restantes=dias_restantes,
+        active_page="garantias"
+    )
+
+@app.route("/garantias/<int:garantia_id>/guardar", methods=["POST"])
+@editor_required
+def guardar_garantia(garantia_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    garantia_row, garantia_payload = load_garantia_payload(conn, garantia_id)
+    if not garantia_row:
+        conn.close()
+        flash("Garantía no encontrada.", "error")
+        return redirect(url_for("garantias_page"))
+
+    number = (request.form.get("number") or "").strip()
+    issue_date = (request.form.get("issueDate") or "").strip()
+    expiry_date = (request.form.get("expiryDate") or "").strip()
+    client = (request.form.get("client") or "").strip()
+    client_document = (request.form.get("clientDocument") or "").strip()
+    warranty_text = (request.form.get("warrantyText") or "").strip()
+
+    items = garantia_payload.get("items", []) or []
+
+    serials_flat = request.form.getlist("serials[]")
+    serial_idx = 0
+
+    for item in items:
+        quantity = int(item.get("quantity") or 1)
+        if quantity < 1:
+            quantity = 1
+
+        new_serials = []
+        for _ in range(quantity):
+            serial_value = ""
+            if serial_idx < len(serials_flat):
+                serial_value = (serials_flat[serial_idx] or "").strip()
+            new_serials.append(serial_value)
+            serial_idx += 1
+
+        item["serials"] = new_serials
+
+    garantia_payload["document"] = {
+        "dbId": garantia_id,
+        "cotizacionId": garantia_row["cotizacion_id"],
+        "number": number,
+        "issueDate": issue_date,
+        "expiryDate": expiry_date,
+        "client": client,
+        "clientDocument": client_document,
+        "warrantyText": warranty_text
+    }
+
+    current_user = get_current_user()
+    current_user_id = current_user["id"] if current_user else None
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn.execute("""
+        UPDATE garantias
+        SET numero_garantia = ?,
+            fecha_emision = ?,
+            fecha_vencimiento = ?,
+            cliente_nombre = ?,
+            cliente_documento = ?,
+            texto_garantia = ?,
+            payload_json = ?,
+            actualizado_por_user_id = ?,
+            actualizado_en = ?
+        WHERE id = ?
+    """, (
+        number,
+        issue_date,
+        expiry_date,
+        client,
+        client_document,
+        warranty_text,
+        json.dumps(garantia_payload, ensure_ascii=False),
+        current_user_id,
+        now_str,
+        garantia_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    flash("Garantía actualizada correctamente.", "success")
+    return redirect(url_for("garantia_detail_page", garantia_id=garantia_id))
 
 @app.route("/cotizaciones/<int:cotizacion_id>/generar-garantia", methods=["POST"])
 @editor_required

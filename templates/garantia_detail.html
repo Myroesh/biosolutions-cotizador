@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Garantía - Biosolutions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-grid{
+    display:grid;
+    grid-template-columns: 440px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  .page-card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+
+  .page-card h2{
+    margin:0 0 14px;
+    color:#0a4570;
+    font-size:20px;
+  }
+
+  .field{
+    margin-bottom:12px;
+  }
+
+  .field label{
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+    font-weight:700;
+    color:#334155;
+  }
+
+  .field input,
+  .field textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .field textarea{
+    min-height:120px;
+    resize:vertical;
+  }
+
+  .btn{
+    background:#0b8fb0;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .btn-light{
+    background:#e2e8f0;
+    color:#0f172a;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+  }
+
+  .inline-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+  }
+
+  .serial-block{
+    border:1px solid #dbe3ea;
+    border-radius:12px;
+    padding:12px;
+    background:#f8fafc;
+    margin-bottom:10px;
+  }
+
+  .serial-block strong{
+    display:block;
+    margin-bottom:8px;
+    color:#0a4570;
+    font-size:14px;
+  }
+
+  .serial-row{
+    display:grid;
+    grid-template-columns: 110px 1fr;
+    gap:10px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+
+  .status-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:12px;
+  }
+
+  .status-chip.vigente{
+    background:#ecfdf5;
+    color:#166534;
+    border:1px solid #bbf7d0;
+  }
+
+  .status-chip.proxima{
+    background:#fff7ed;
+    color:#9a3412;
+    border:1px solid #fed7aa;
+  }
+
+  .status-chip.vencida{
+    background:#fef2f2;
+    color:#991b1b;
+    border:1px solid #fecaca;
+  }
+
+  .doc-preview{
+    position:relative;
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:18px;
+    min-height:900px;
+    overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.05);
+  }
+
+  .doc-left{
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:22mm;
+    background:linear-gradient(180deg,#1b6f86 0%, #0a4570 100%);
+  }
+
+  .doc-content{
+    position:relative;
+    z-index:2;
+    padding:18mm 14mm 16mm 32mm;
+    color:#0f172a;
+    font-size:13px;
+    line-height:1.55;
+  }
+
+  .doc-title{
+    text-align:center;
+    font-size:22px;
+    font-weight:800;
+    color:#0a4570;
+    margin-bottom:18px;
+    text-transform:uppercase;
+  }
+
+  .doc-meta{
+    margin-bottom:14px;
+  }
+
+  .doc-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:16px 0;
+    font-size:12px;
+  }
+
+  .doc-table th,
+  .doc-table td{
+    border:1px solid #cbd5e1;
+    padding:8px 10px;
+    vertical-align:top;
+  }
+
+  .doc-table th{
+    background:#eef6fb;
+    color:#0a4570;
+    font-weight:800;
+  }
+
+  @media print{
+    .topbar,
+    .inline-actions,
+    .page-grid > .page-card:first-child{
+      display:none !important;
+    }
+
+    .page-grid{
+      display:block !important;
+    }
+
+    .doc-preview{
+      border:none !important;
+      box-shadow:none !important;
+      border-radius:0 !important;
+    }
+  }
+
+  @media (max-width: 1200px){
+    .page-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="page-card">
+    <h2>Editar garantía</h2>
+
+    {% if estado_calculado == "vigente" %}
+      <div class="status-chip vigente">Vigente{% if dias_restantes is not none %} · {{ dias_restantes }} días restantes{% endif %}</div>
+    {% elif estado_calculado == "proxima_a_vencer" %}
+      <div class="status-chip proxima">Próxima a vencer{% if dias_restantes is not none %} · {{ dias_restantes }} días restantes{% endif %}</div>
+    {% elif estado_calculado == "vencida" %}
+      <div class="status-chip vencida">Vencida{% if dias_restantes is not none %} · {{ dias_restantes|abs }} días{% endif %}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('guardar_garantia', garantia_id=garantia['id']) }}">
+      <div class="field">
+        <label for="number">Número</label>
+        <input type="text" id="number" name="number" value="{{ garantia_payload['document']['number'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="issueDate">Fecha de emisión</label>
+        <input type="date" id="issueDate" name="issueDate" value="{{ garantia_payload['document']['issueDate'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="expiryDate">Fecha de vencimiento</label>
+        <input type="date" id="expiryDate" name="expiryDate" value="{{ garantia_payload['document']['expiryDate'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="client">Cliente</label>
+        <input type="text" id="client" name="client" value="{{ garantia_payload['document']['client'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="clientDocument">Documento cliente</label>
+        <input type="text" id="clientDocument" name="clientDocument" value="{{ garantia_payload['document']['clientDocument'] or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="warrantyText">Texto legal de garantía</label>
+        <textarea id="warrantyText" name="warrantyText">{{ garantia_payload['document']['warrantyText'] or '' }}</textarea>
+      </div>
+
+      <h2 style="margin-top:22px; font-size:18px;">Seriales por equipo</h2>
+
+      {% for item in garantia_payload['items'] %}
+        <div class="serial-block">
+          <strong>
+            {{ item['title'] or 'Equipo' }}
+            {% if item['brand'] %} - {{ item['brand'] }}{% endif %}
+            {% if item['model'] %} {{ item['model'] }}{% endif %}
+            | Cantidad: {{ item['quantity'] or 1 }}
+          </strong>
+
+          {% for serial in item['serials'] %}
+            <div class="serial-row">
+              <span>Serie {{ loop.index }}</span>
+              <input type="text" name="serials[]" value="{{ serial or '' }}">
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      <div class="inline-actions">
+        {% if current_role in ['admin', 'editor'] %}
+          <button type="submit" class="btn">Guardar cambios</button>
+        {% endif %}
+        <a href="{{ url_for('garantias_page') }}" class="btn-light">Volver al listado</a>
+        <button type="button" class="btn-light" onclick="window.print()">Imprimir</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="doc-preview">
+    <div class="doc-left"></div>
+    <div class="doc-content">
+      <div class="doc-title">Garantía</div>
+
+      <div class="doc-meta">
+        <strong>Número:</strong> {{ garantia_payload['document']['number'] or '' }}<br>
+        <strong>Fecha emisión:</strong> {{ garantia_payload['document']['issueDate'] or '' }}<br>
+        <strong>Fecha vencimiento:</strong> {{ garantia_payload['document']['expiryDate'] or '' }}
+      </div>
+
+      <p>
+        Se extiende la presente garantía a favor de
+        <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
+        {% if garantia_payload['document']['clientDocument'] %}
+          con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
+        {% endif %}
+        respecto de los siguientes equipos:
+      </p>
+
+      <p>{{ garantia_payload['document']['warrantyText'] or '' }}</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th>Marca / Modelo</th>
+            <th>Cant.</th>
+            <th>Seriales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in garantia_payload['items'] %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item['title'] or '' }}</td>
+              <td>
+                {% if item['brand'] %}{{ item['brand'] }}{% endif %}
+                {% if item['model'] %} / {{ item['model'] }}{% endif %}
+              </td>
+              <td>{{ item['quantity'] or 1 }}</td>
+              <td>
+                {% for serial in item['serials'] %}
+                  {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <p><strong>Total referencial:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
+
+      <p>
+        Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
+        hasta la fecha de vencimiento indicada en el presente documento.
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}

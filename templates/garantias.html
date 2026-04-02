@@ -78,6 +78,22 @@
     color:#64748b;
     line-height:1.6;
   }
+  .actions{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .actions a{
+    text-decoration:none;
+    background:#0b8fb0;
+    color:#fff;
+    padding:8px 12px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:700;
+  }
 </style>
 {% endblock %}
 
@@ -112,10 +128,14 @@
             <span class="status-chip">Sin fecha</span>
           {% endif %}
 
-          <span>
+           <span>
             Creado por: {{ g["creado_por_username"] or "N/D" }}
             {% if g["creado_en"] %} | Fecha creación: {{ g["creado_en"] }}{% endif %}
           </span>
+
+          <div class="actions">
+            <a href="{{ url_for('garantia_detail_page', garantia_id=g['id']) }}">Abrir / editar</a>
+          </div>
         </div>
       {% endfor %}
     </div>
