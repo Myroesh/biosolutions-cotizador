@@ -2129,3 +2129,9 @@ if __name__ == "__main__":
     ensure_auth_schema(conn)
     conn.close()
     app.run(host="0.0.0.0", port=8081, debug=True)
+
+
+    
+# =========================
+# CORREGIDO 02/04/2026
+# =========================
