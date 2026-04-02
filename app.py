@@ -774,6 +774,82 @@ def load_garantia_payload(conn, garantia_id):
     payload["totals"]["grandTotal"] = float(payload["totals"].get("grandTotal") or row["total"] or 0)
 
     return row, payload
+
+
+
+def sync_entrega_serials_to_garantia(conn, cotizacion_id, source_entrega_payload):
+    garantia_row, garantia_payload = None, None
+
+    garantia = conn.execute("""
+        SELECT id
+        FROM garantias
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if not garantia:
+        return
+
+    garantia_row, garantia_payload = load_garantia_payload(conn, garantia["id"])
+    if not garantia_row or not garantia_payload:
+        return
+
+    source_items = source_entrega_payload.get("items", []) or []
+    target_items = garantia_payload.get("items", []) or []
+
+    for idx, source_item in enumerate(source_items):
+        if idx >= len(target_items):
+            continue
+        target_items[idx]["serials"] = list(source_item.get("serials", []) or [])
+
+    garantia_payload["items"] = target_items
+
+    conn.execute("""
+        UPDATE garantias
+        SET payload_json = ?
+        WHERE id = ?
+    """, (
+        json.dumps(garantia_payload, ensure_ascii=False),
+        garantia_row["id"]
+    ))
+
+
+def sync_garantia_serials_to_entrega(conn, cotizacion_id, source_garantia_payload):
+    entrega = conn.execute("""
+        SELECT id
+        FROM entregas
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if not entrega:
+        return
+
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega["id"])
+    if not entrega_row or not entrega_payload:
+        return
+
+    source_items = source_garantia_payload.get("items", []) or []
+    target_items = entrega_payload.get("items", []) or []
+
+    for idx, source_item in enumerate(source_items):
+        if idx >= len(target_items):
+            continue
+        target_items[idx]["serials"] = list(source_item.get("serials", []) or [])
+
+    entrega_payload["items"] = target_items
+
+    conn.execute("""
+        UPDATE entregas
+        SET payload_json = ?
+        WHERE id = ?
+    """, (
+        json.dumps(entrega_payload, ensure_ascii=False),
+        entrega_row["id"]
+    ))
+
 # =========================
 # Rutas base / auth
 # =========================
@@ -1944,6 +2020,12 @@ def guardar_entrega(entrega_id):
         entrega_id
     ))
 
+    sync_entrega_serials_to_garantia(
+        conn,
+        entrega_row["cotizacion_id"],
+        entrega_payload
+    )
+
     conn.commit()
     conn.close()
 
@@ -2190,6 +2272,12 @@ def guardar_garantia(garantia_id):
         now_str,
         garantia_id
     ))
+
+    sync_garantia_serials_to_entrega(
+        conn,
+        garantia_row["cotizacion_id"],
+        garantia_payload
+    )
 
     conn.commit()
     conn.close()
