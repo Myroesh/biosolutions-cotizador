@@ -281,7 +281,9 @@
             <span class="origin-badge">
               Plantillas derivadas: {{ equipo["plantillas_count"] or 0 }}
             </span>
-
+            {% if (equipo["plantillas_count"] or 0) > 0 %}
+              <span>Puedes editarlas o eliminarlas desde “Ver / gestionar plantillas”.</span>
+            {% endif %}
             {% if equipo["descripcion_breve"] %}
               <span>{{ equipo["descripcion_breve"] }}</span>
             {% endif %}
@@ -298,7 +300,7 @@
               {% endif %}
 
               <a class="btn-link secondary" href="{{ url_for('plantillas_page') }}?equipo_id={{ equipo['id'] }}&action=view">
-                Ver plantillas
+                Ver / gestionar plantillas
               </a>
 
               {% if current_role == 'admin' %}

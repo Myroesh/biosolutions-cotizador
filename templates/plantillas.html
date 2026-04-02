@@ -301,15 +301,23 @@
   <section class="page-card">
     <h2>{% if current_role in ['admin', 'editor'] %}Nueva plantilla / variante{% else %}Detalle del módulo{% endif %}</h2>
     {% if selected_equipo and current_action == "create" %}
-      <div class="context-box">
-        <strong>Creando plantilla desde equipo maestro</strong>
-        <span>
-          {{ selected_equipo["nombre"] }}
-          {% if selected_equipo["marca"] %} - {{ selected_equipo["marca"] }}{% endif %}
-          {% if selected_equipo["modelo"] %} {{ selected_equipo["modelo"] }}{% endif %}
-        </span>
-      </div>
+  <div class="context-box">
+    <strong>Creando plantilla desde equipo maestro</strong>
+    <span>
+      {{ selected_equipo["nombre"] }}
+      {% if selected_equipo["marca"] %} - {{ selected_equipo["marca"] }}{% endif %}
+      {% if selected_equipo["modelo"] %} {{ selected_equipo["modelo"] }}{% endif %}
+    </span>
+    {% if selected_equipo["descripcion_breve"] %}
+      <span style="margin-top:6px;">
+        Base técnica: {{ selected_equipo["descripcion_breve"] }}
+      </span>
     {% endif %}
+    <span style="margin-top:6px;">
+      Se precargarán imagen y descripciones base del equipo maestro. Luego puedes ajustar solo la variante comercial.
+    </span>
+  </div>
+{% endif %}
      {% if current_role in ['admin', 'editor'] %}
   <form method="post" action="/plantillas/nueva" id="plantillaForm">
   <div class="field">
@@ -321,18 +329,26 @@
   </div>
 
     <div class="field" id="equipoBaseWrapper" style="display:none;">
-    <label for="equipo_id">Equipo maestro base</label>
-    <select id="equipo_id" name="equipo_id">
-      <option value="">Selecciona un equipo</option>
-      {% for equipo in equipos %}
-        <option value="{{ equipo['id'] }}" {% if selected_equipo_id and selected_equipo_id == equipo['id'] %}selected{% endif %}>
-          {{ equipo["nombre"] }}
-          {% if equipo["marca"] %} - {{ equipo["marca"] }}{% endif %}
-          {% if equipo["modelo"] %} {{ equipo["modelo"] }}{% endif %}
-        </option>
-      {% endfor %}
-    </select>
+  <label for="equipo_id">Equipo maestro base</label>
+  <select id="equipo_id" name="equipo_id">
+    <option value="">Selecciona un equipo</option>
+    {% for equipo in equipos %}
+      <option value="{{ equipo['id'] }}" {% if selected_equipo_id and selected_equipo_id == equipo['id'] %}selected{% endif %}>
+        {{ equipo["nombre"] }}
+        {% if equipo["marca"] %} - {{ equipo["marca"] }}{% endif %}
+        {% if equipo["modelo"] %} {{ equipo["modelo"] }}{% endif %}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+
+<div id="equipoBasePreview" class="context-box" style="display:none;">
+  <strong>Datos heredados del equipo maestro</strong>
+  <span id="equipoBasePreviewText"></span>
+  <div class="image-preview-box" id="equipoBasePreviewImage" style="margin-top:10px;">
+    <div class="image-preview-empty">Sin imagen base</div>
   </div>
+</div>
   <div class="field">
     <label for="nombre_plantilla">Nombre de plantilla *</label>
     <input type="text" id="nombre_plantilla" name="nombre_plantilla" required placeholder="Yonker 8000B pediátrico">
@@ -624,23 +640,110 @@
 
 {% block scripts %}
 <script>
-  function toggleEquipoBaseField() {
-    const modo = document.getElementById("modo_creacion");
-    const wrapper = document.getElementById("equipoBaseWrapper");
-    const equipoSelect = document.getElementById("equipo_id");
+  const EQUIPOS_DATA = {{ equipos_json|tojson }};
+ function toggleEquipoBaseField() {
+  const modo = document.getElementById("modo_creacion");
+  const wrapper = document.getElementById("equipoBaseWrapper");
+  const equipoSelect = document.getElementById("equipo_id");
 
-    if (!modo || !wrapper || !equipoSelect) return;
+  if (!modo || !wrapper || !equipoSelect) return;
 
-    const usarEquipo = modo.value === "desde_equipo";
+  const usarEquipo = modo.value === "desde_equipo";
 
-    wrapper.style.display = usarEquipo ? "block" : "none";
-    equipoSelect.required = usarEquipo;
+  wrapper.style.display = usarEquipo ? "block" : "none";
+  equipoSelect.required = usarEquipo;
 
-    if (!usarEquipo) {
-      equipoSelect.value = "";
-    }
+  if (!usarEquipo) {
+    updateEquipoBasePreview(null);
+  } else {
+    handleEquipoBaseChange();
+  }
+} 
+  function getEquipoDataById(equipoId) {
+  const id = Number(equipoId || 0);
+  if (!id) return null;
+  return EQUIPOS_DATA.find(e => Number(e.id) === id) || null;
+}
+
+function buildNombreComercialBase(equipo) {
+  if (!equipo) return "";
+  return String(equipo.nombre_comercial_base || "").trim();
+}
+
+function updateEquipoBasePreview(equipo) {
+  const box = document.getElementById("equipoBasePreview");
+  const text = document.getElementById("equipoBasePreviewText");
+  const image = document.getElementById("equipoBasePreviewImage");
+
+  if (!box || !text || !image) return;
+
+  if (!equipo) {
+    box.style.display = "none";
+    text.textContent = "";
+    renderImagePreview(image, "");
+    return;
   }
 
+  box.style.display = "block";
+
+  const partes = [];
+  if (equipo.nombre) partes.push(equipo.nombre);
+  if (equipo.marca) partes.push(`Marca: ${equipo.marca}`);
+  if (equipo.modelo) partes.push(`Modelo: ${equipo.modelo}`);
+  if (equipo.descripcion_breve) partes.push(`Descripción breve: ${equipo.descripcion_breve}`);
+
+  text.innerHTML = partes.map(p => `<div style="margin-bottom:4px;">${p}</div>`).join("");
+  renderImagePreview(image, equipo.imagen || "");
+}
+
+function fillTemplateFormFromEquipo(equipo) {
+  if (!equipo) return;
+
+  const nombreComercial = document.getElementById("nombre_comercial");
+  const imagen = document.getElementById("plantilla_imagen");
+  const descripcionBreve = document.getElementById("plantilla_descripcion_breve");
+  const descripcionLarga = document.getElementById("plantilla_descripcion_larga");
+  const preview = document.getElementById("createTemplateImagePreview");
+
+  if (nombreComercial) {
+    nombreComercial.value = buildNombreComercialBase(equipo);
+  }
+
+  if (imagen) {
+    imagen.value = equipo.imagen || "";
+  }
+
+  if (descripcionBreve) {
+    descripcionBreve.value = equipo.descripcion_breve || "";
+  }
+
+  if (descripcionLarga) {
+    descripcionLarga.value = equipo.descripcion_larga || "";
+  }
+
+  if (preview && imagen) {
+    renderImagePreview(preview, imagen.value);
+  }
+}
+
+function handleEquipoBaseChange() {
+  const modo = document.getElementById("modo_creacion");
+  const equipoSelect = document.getElementById("equipo_id");
+
+  if (!modo || !equipoSelect) return;
+
+  if (modo.value !== "desde_equipo") {
+    updateEquipoBasePreview(null);
+    return;
+  }
+
+  const equipo = getEquipoDataById(equipoSelect.value);
+  updateEquipoBasePreview(equipo);
+
+  if (equipo) {
+    fillTemplateFormFromEquipo(equipo);
+  }
+}
   function removeRow(button) {
     const row = button.closest(".row-box");
     if (row) row.remove();
@@ -770,9 +873,17 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    toggleEquipoBaseField();
-    bindCreateTemplateImageUpload();
-    bindEditTemplateImageUploads();
-  });
+  const equipoSelect = document.getElementById("equipo_id");
+
+  toggleEquipoBaseField();
+  bindCreateTemplateImageUpload();
+  bindEditTemplateImageUploads();
+
+  if (equipoSelect) {
+    equipoSelect.addEventListener("change", handleEquipoBaseChange);
+  }
+
+  handleEquipoBaseChange();
+});
 </script>
 {% endblock %}

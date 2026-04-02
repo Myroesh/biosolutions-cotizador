@@ -577,6 +577,7 @@ def build_initial_entrega_payload(cot_row, cot_payload, numero_entrega):
 
         entrega_items.append({
             "id": item.get("id") or f"ent_item_{idx+1}",
+            "id": item.get("dbItemId") and f"dbitem_{item['dbItemId']}" or item.get("id") or f"item_{idx+1}",
             "title": (item.get("title") or "").strip(),
             "brand": (item.get("brand") or "").strip(),
             "model": (item.get("model") or "").strip(),
@@ -632,6 +633,7 @@ def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
 
         garantia_items.append({
             "id": item.get("id") or f"gar_item_{idx+1}",
+            "id": item.get("dbItemId") and f"dbitem_{item['dbItemId']}" or item.get("id") or f"item_{idx+1}",
             "title": (item.get("title") or "").strip(),
             "brand": (item.get("brand") or "").strip(),
             "model": (item.get("model") or "").strip(),
@@ -1270,50 +1272,73 @@ def plantillas_page():
         if not selected_equipo:
             equipo_id = None
 
-    filter_by_equipo = bool(equipo_id and action == "view")
+filter_by_equipo = bool(equipo_id and action == "view")
 
-    if filter_by_equipo:
-        plantillas_rows = conn.execute("""
-            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
-            FROM plantillas p
-            LEFT JOIN equipos e ON e.id = p.equipo_id
-            WHERE p.activo = 1
-              AND p.equipo_id = ?
-            ORDER BY p.id DESC
-        """, (equipo_id,)).fetchall()
-    else:
-        plantillas_rows = conn.execute("""
-            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
-            FROM plantillas p
-            LEFT JOIN equipos e ON e.id = p.equipo_id
-            WHERE p.activo = 1
-            ORDER BY p.id DESC
-        """).fetchall()
+if filter_by_equipo:
+    plantillas_rows = conn.execute("""
+        SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+        FROM plantillas p
+        LEFT JOIN equipos e ON e.id = p.equipo_id
+        WHERE p.activo = 1
+            AND p.equipo_id = ?
+        ORDER BY p.id DESC
+    """, (equipo_id,)).fetchall()
+else:
+    plantillas_rows = conn.execute("""
+        SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+        FROM plantillas p
+        LEFT JOIN equipos e ON e.id = p.equipo_id
+        WHERE p.activo = 1
+        ORDER BY p.id DESC
+    """).fetchall()
 
     plantillas = []
     for p in plantillas_rows:
-        children = get_plantilla_children(conn, p["id"])
+     children = get_plantilla_children(conn, p["id"])
 
-        plantilla_dict = dict(p)
-        plantilla_dict["especificaciones"] = [dict(x) for x in children["especificaciones"]]
-        plantilla_dict["usos"] = [dict(x) for x in children["usos"]]
-        plantilla_dict["accesorios"] = [dict(x) for x in children["accesorios"]]
-        plantilla_dict["ventajas"] = [dict(x) for x in children["ventajas"]]
-        plantillas.append(plantilla_dict)
+    plantilla_dict = dict(p)
+    plantilla_dict["especificaciones"] = [dict(x) for x in children["especificaciones"]]
+    plantilla_dict["usos"] = [dict(x) for x in children["usos"]]
+    plantilla_dict["accesorios"] = [dict(x) for x in children["accesorios"]]
+    plantilla_dict["ventajas"] = [dict(x) for x in children["ventajas"]]
+    plantillas.append(plantilla_dict)
 
     conn.close()
 
-    return render_template(
-        "plantillas.html",
-        equipos=equipos,
-        plantillas=plantillas,
-        active_page="plantillas",
-        selected_equipo=selected_equipo,
-        selected_equipo_id=equipo_id,
-        current_action=action,
-        filter_by_equipo=filter_by_equipo
-    )
+    equipos_json = []
+    for e in equipos:
+        nombre = (e["nombre"] or "").strip()
+        marca = (e["marca"] or "").strip()
+        modelo = (e["modelo"] or "").strip()
 
+    nombre_comercial_base = " ".join(
+        part for part in [nombre, marca, modelo] if part
+    ).strip()
+
+    equipos_json.append({
+        "id": e["id"],
+        "nombre": nombre,
+        "marca": marca,
+        "modelo": modelo,
+        "origen": (e["origen"] or "").strip(),
+        "garantia_base": (e["garantia_base"] or "").strip(),
+        "imagen": (e["imagen"] or "").strip(),
+        "descripcion_breve": (e["descripcion_breve"] or "").strip(),
+        "descripcion_larga": (e["descripcion_larga"] or "").strip(),
+        "nombre_comercial_base": nombre_comercial_base
+    })
+
+        return render_template(
+            "plantillas.html",
+            equipos=equipos,
+            equipos_json=equipos_json,
+            plantillas=plantillas,
+            active_page="plantillas",
+            selected_equipo=selected_equipo,
+            selected_equipo_id=equipo_id,
+            current_action=action,
+            filter_by_equipo=filter_by_equipo
+        )
 
 @app.route("/plantillas/nueva", methods=["POST"])
 @editor_required
