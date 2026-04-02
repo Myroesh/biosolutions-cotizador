@@ -17,6 +17,10 @@ UPLOAD_DIR = os.path.join(app.static_folder, "uploads", "cotizaciones")
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
 
+# =========================
+# Helpers generales
+# =========================
+
 def ensure_upload_dir():
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -41,10 +45,16 @@ def normalize_image_path_for_db(image_value):
 
     return image_value
 
+
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+# =========================
+# Migraciones / schema
+# =========================
 
 def ensure_payload_json_column(conn):
     columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
@@ -53,6 +63,7 @@ def ensure_payload_json_column(conn):
     if "payload_json" not in column_names:
         conn.execute("ALTER TABLE cotizaciones ADD COLUMN payload_json TEXT")
         conn.commit()
+
 
 def ensure_users_table(conn):
     conn.execute("""
@@ -68,6 +79,7 @@ def ensure_users_table(conn):
     """)
     conn.commit()
 
+
 def ensure_cotizacion_documental_column(conn):
     columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
     column_names = [col["name"] for col in columns]
@@ -75,6 +87,22 @@ def ensure_cotizacion_documental_column(conn):
     if "estado_documental" not in column_names:
         conn.execute("ALTER TABLE cotizaciones ADD COLUMN estado_documental TEXT DEFAULT 'borrador'")
         conn.commit()
+
+
+def ensure_cotizaciones_audit_columns(conn):
+    columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
+    column_names = [col["name"] for col in columns]
+
+    if "creado_por_user_id" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN creado_por_user_id INTEGER")
+    if "actualizado_por_user_id" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN actualizado_por_user_id INTEGER")
+    if "creado_en" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN creado_en TEXT")
+    if "actualizado_en" not in column_names:
+        conn.execute("ALTER TABLE cotizaciones ADD COLUMN actualizado_en TEXT")
+
+    conn.commit()
 
 
 def ensure_entregas_table(conn):
@@ -132,104 +160,14 @@ def ensure_documentos_schema(conn):
     ensure_garantias_table(conn)
 
 
-def next_entrega_number(conn):
-    row = conn.execute("""
-        SELECT numero_entrega
-        FROM entregas
-        WHERE numero_entrega IS NOT NULL AND numero_entrega != ''
-        ORDER BY id DESC
-        LIMIT 1
-    """).fetchone()
-
-    if not row or not row["numero_entrega"]:
-        return "ENT-001"
-
-    numero = row["numero_entrega"]
-    try:
-        last = int(numero.replace("ENT-", "").strip())
-    except ValueError:
-        last = 0
-
-    return f"ENT-{last + 1:03d}"
-
-
-def next_garantia_number(conn):
-    row = conn.execute("""
-        SELECT numero_garantia
-        FROM garantias
-        WHERE numero_garantia IS NOT NULL AND numero_garantia != ''
-        ORDER BY id DESC
-        LIMIT 1
-    """).fetchone()
-
-    if not row or not row["numero_garantia"]:
-        return "GAR-001"
-
-    numero = row["numero_garantia"]
-    try:
-        last = int(numero.replace("GAR-", "").strip())
-    except ValueError:
-        last = 0
-
-    return f"GAR-{last + 1:03d}"
-
-
-def add_one_year_safe(date_str):
-    if not date_str:
-        return ""
-
-    base_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-    try:
-        return base_date.replace(year=base_date.year + 1).isoformat()
-    except ValueError:
-        # caso 29 de febrero
-        return (base_date + timedelta(days=365)).isoformat()
-
-
-def get_garantia_status(fecha_vencimiento_str):
-    if not fecha_vencimiento_str:
-        return "sin_fecha"
-
-    hoy = date.today()
-    venc = datetime.strptime(fecha_vencimiento_str, "%Y-%m-%d").date()
-    dias_restantes = (venc - hoy).days
-
-    if dias_restantes < 0:
-        return "vencida"
-    if dias_restantes <= 30:
-        return "proxima_a_vencer"
-    return "vigente"
-
-
-def get_garantia_days_remaining(fecha_vencimiento_str):
-    if not fecha_vencimiento_str:
-        return None
-
-    hoy = date.today()
-    venc = datetime.strptime(fecha_vencimiento_str, "%Y-%m-%d").date()
-    return (venc - hoy).days
-
-def ensure_cotizaciones_audit_columns(conn):
-    columns = conn.execute("PRAGMA table_info(cotizaciones)").fetchall()
-    column_names = [col["name"] for col in columns]
-
-    if "creado_por_user_id" not in column_names:
-        conn.execute("ALTER TABLE cotizaciones ADD COLUMN creado_por_user_id INTEGER")
-    if "actualizado_por_user_id" not in column_names:
-        conn.execute("ALTER TABLE cotizaciones ADD COLUMN actualizado_por_user_id INTEGER")
-    if "creado_en" not in column_names:
-        conn.execute("ALTER TABLE cotizaciones ADD COLUMN creado_en TEXT")
-    if "actualizado_en" not in column_names:
-        conn.execute("ALTER TABLE cotizaciones ADD COLUMN actualizado_en TEXT")
-
-    conn.commit()
-
-
 def ensure_auth_schema(conn):
     ensure_users_table(conn)
     ensure_documentos_schema(conn)
 
+
+# =========================
+# Auth / permisos
+# =========================
 
 def get_current_user():
     user_id = session.get("user_id")
@@ -287,7 +225,12 @@ def inject_auth_context():
     return {
         "current_user": user,
         "current_role": user["rol"] if user else None
-    }        
+    }
+
+
+# =========================
+# Numeradores y utilidades
+# =========================
 
 def next_quote_number(conn):
     row = conn.execute("""
@@ -310,11 +253,89 @@ def next_quote_number(conn):
     return f"COT-{last + 1:03d}"
 
 
+def next_entrega_number(conn):
+    row = conn.execute("""
+        SELECT numero_entrega
+        FROM entregas
+        WHERE numero_entrega IS NOT NULL AND numero_entrega != ''
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+    if not row or not row["numero_entrega"]:
+        return "ENT-001"
+
+    numero = row["numero_entrega"]
+    try:
+        last = int(numero.replace("ENT-", "").strip())
+    except ValueError:
+        last = 0
+
+    return f"ENT-{last + 1:03d}"
+
+
+def next_garantia_number(conn):
+    row = conn.execute("""
+        SELECT numero_garantia
+        FROM garantias
+        WHERE numero_garantia IS NOT NULL AND numero_garantia != ''
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+    if not row or not row["numero_garantia"]:
+        return "GAR-001"
+
+    numero = row["numero_garantia"]
+    try:
+        last = int(numero.replace("GAR-", "").strip())
+    except ValueError:
+        last = 0
+
+    return f"GAR-{last + 1:03d}"
+
+
+def add_one_year_safe(date_str):
+    if not date_str:
+        return ""
+
+    base_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    try:
+        return base_date.replace(year=base_date.year + 1).isoformat()
+    except ValueError:
+        return (base_date + timedelta(days=365)).isoformat()
+
+
+def get_garantia_status(fecha_vencimiento_str):
+    if not fecha_vencimiento_str:
+        return "sin_fecha"
+
+    hoy = date.today()
+    venc = datetime.strptime(fecha_vencimiento_str, "%Y-%m-%d").date()
+    dias_restantes = (venc - hoy).days
+
+    if dias_restantes < 0:
+        return "vencida"
+    if dias_restantes <= 30:
+        return "proxima_a_vencer"
+    return "vigente"
+
+
+def get_garantia_days_remaining(fecha_vencimiento_str):
+    if not fecha_vencimiento_str:
+        return None
+
+    hoy = date.today()
+    venc = datetime.strptime(fecha_vencimiento_str, "%Y-%m-%d").date()
+    return (venc - hoy).days
+
+
+# =========================
+# Equipos / plantillas
+# =========================
+
 def build_initial_template_data_from_equipo(equipo_row):
-    """
-    Construye el snapshot inicial de una plantilla creada desde un equipo maestro.
-    Por ahora copiamos los campos base disponibles sin tocar todavía tablas hijas.
-    """
     if not equipo_row:
         return {
             "nombre_comercial": "",
@@ -354,6 +375,7 @@ def build_initial_template_data_from_equipo(equipo_row):
         "descripcion_larga": descripcion_larga,
         "imagen": (equipo_row["imagen"] or "").strip()
     }
+
 
 def get_plantilla_children(conn, plantilla_id):
     especificaciones = conn.execute("""
@@ -405,9 +427,7 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
             continue
 
         conn.execute("""
-            INSERT INTO plantillas_especificaciones (
-                plantilla_id, parametro, detalle, orden
-            )
+            INSERT INTO plantillas_especificaciones (plantilla_id, parametro, detalle, orden)
             VALUES (?, ?, ?, ?)
         """, (plantilla_id, parametro, detalle, idx))
 
@@ -417,9 +437,7 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
             continue
 
         conn.execute("""
-            INSERT INTO plantillas_usos (
-                plantilla_id, texto, orden
-            )
+            INSERT INTO plantillas_usos (plantilla_id, texto, orden)
             VALUES (?, ?, ?)
         """, (plantilla_id, texto, idx))
 
@@ -429,9 +447,7 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
             continue
 
         conn.execute("""
-            INSERT INTO plantillas_accesorios (
-                plantilla_id, texto, orden
-            )
+            INSERT INTO plantillas_accesorios (plantilla_id, texto, orden)
             VALUES (?, ?, ?)
         """, (plantilla_id, texto, idx))
 
@@ -441,11 +457,14 @@ def replace_plantilla_children(conn, plantilla_id, specs, usos, accesorios, vent
             continue
 
         conn.execute("""
-            INSERT INTO plantillas_ventajas (
-                plantilla_id, texto, orden
-            )
+            INSERT INTO plantillas_ventajas (plantilla_id, texto, orden)
             VALUES (?, ?, ?)
         """, (plantilla_id, texto, idx))
+
+
+# =========================
+# Payloads cotización / entrega / garantía
+# =========================
 
 def load_cotizacion_payload(conn, cotizacion_id):
     cot = conn.execute("""
@@ -531,6 +550,7 @@ def load_cotizacion_payload(conn, cotizacion_id):
         payload["selectedItemId"] = payload["items"][0]["id"]
 
     return payload
+
 
 def build_initial_entrega_payload(cot_row, cot_payload, numero_entrega):
     quotation = cot_payload.get("quotation", {}) or {}
@@ -638,6 +658,7 @@ def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
         }
     }
 
+
 def load_entrega_payload(conn, entrega_id):
     row = conn.execute("""
         SELECT *
@@ -696,10 +717,16 @@ def load_entrega_payload(conn, entrega_id):
 
     return row, payload
 
+
+# =========================
+# Rutas base / auth
+# =========================
+
 @app.route("/")
 @login_required
 def dashboard():
     return render_template("index.html", active_page="inicio")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -737,6 +764,11 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
+
+# =========================
+# Usuarios
+# =========================
+
 @app.route("/usuarios")
 @admin_required
 def usuarios_page():
@@ -751,6 +783,7 @@ def usuarios_page():
 
     conn.close()
     return render_template("usuarios.html", usuarios=usuarios, active_page="usuarios")
+
 
 @app.route("/usuarios/nuevo", methods=["POST"])
 @admin_required
@@ -798,6 +831,7 @@ def crear_usuario():
     flash("Usuario creado correctamente.", "success")
     return redirect(url_for("usuarios_page"))
 
+
 @app.route("/usuarios/<int:user_id>/rol", methods=["POST"])
 @admin_required
 def actualizar_rol_usuario(user_id):
@@ -827,6 +861,7 @@ def actualizar_rol_usuario(user_id):
     flash("Rol actualizado correctamente.", "success")
     return redirect(url_for("usuarios_page"))
 
+
 @app.route("/usuarios/<int:user_id>/desactivar", methods=["POST"])
 @admin_required
 def desactivar_usuario(user_id):
@@ -849,7 +884,12 @@ def desactivar_usuario(user_id):
 
     flash("Usuario desactivado correctamente.", "success")
     return redirect(url_for("usuarios_page"))
-    
+
+
+# =========================
+# Upload imágenes
+# =========================
+
 @app.route("/upload-image", methods=["POST"])
 def upload_image():
     ensure_upload_dir()
@@ -880,6 +920,11 @@ def upload_image():
         "url": public_url,
         "filename": unique_name
     })
+
+
+# =========================
+# Cotizador
+# =========================
 
 @app.route("/cotizador")
 @login_required
@@ -958,6 +1003,11 @@ def cotizador():
         today=str(date.today())
     )
 
+
+# =========================
+# Equipos
+# =========================
+
 @app.route("/equipos")
 @login_required
 def equipos_page():
@@ -979,177 +1029,397 @@ def equipos_page():
     conn.close()
     return render_template("equipos.html", equipos=equipos, active_page="equipos")
 
-@app.route("/entregas")
-@login_required
-def entregas_page():
-    conn = get_db_connection()
-    ensure_auth_schema(conn)
 
-    entregas = conn.execute("""
-        SELECT
-            e.*,
-            c.numero AS cotizacion_numero,
-            uc.username AS creado_por_username,
-            ua.username AS actualizado_por_username
-        FROM entregas e
-        LEFT JOIN cotizaciones c ON c.id = e.cotizacion_id
-        LEFT JOIN usuarios uc ON uc.id = e.creado_por_user_id
-        LEFT JOIN usuarios ua ON ua.id = e.actualizado_por_user_id
-        ORDER BY e.id DESC
-    """).fetchall()
-
-    conn.close()
-    return render_template("entregas.html", entregas=entregas, active_page="entregas")
-
-
-@app.route("/entregas/<int:entrega_id>")
-@login_required
-def entrega_detail_page(entrega_id):
-    conn = get_db_connection()
-    ensure_auth_schema(conn)
-
-    entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
-    conn.close()
-
-    if not entrega_row:
-        flash("Acta de entrega no encontrada.", "error")
-        return redirect(url_for("entregas_page"))
-
-    return render_template(
-        "entrega_detail.html",
-        entrega=entrega_row,
-        entrega_payload=entrega_payload,
-        active_page="entregas"
-    )
-
-@app.route("/entregas/<int:entrega_id>/guardar", methods=["POST"])
+@app.route("/equipos/nuevo", methods=["POST"])
 @editor_required
-def guardar_entrega(entrega_id):
+def crear_equipo():
+    nombre = request.form.get("nombre", "").strip()
+    marca = request.form.get("marca", "").strip()
+    modelo = request.form.get("modelo", "").strip()
+    origen = request.form.get("origen", "").strip()
+    garantia_base = request.form.get("garantia_base", "").strip()
+    descripcion_breve = request.form.get("descripcion_breve", "").strip()
+    descripcion_larga = request.form.get("descripcion_larga", "").strip()
+    imagen = request.form.get("imagen", "").strip()
+
+    if not nombre:
+        return redirect(url_for("equipos_page"))
+
     conn = get_db_connection()
-    ensure_auth_schema(conn)
+    conn.execute("""
+        INSERT INTO equipos (
+            nombre, marca, modelo, origen, garantia_base,
+            descripcion_breve, descripcion_larga, imagen, activo
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    """, (
+        nombre, marca, modelo, origen, garantia_base,
+        descripcion_breve, descripcion_larga, imagen
+    ))
+    conn.commit()
+    conn.close()
 
-    entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
-    if not entrega_row:
+    return redirect(url_for("equipos_page"))
+
+
+@app.route("/equipos/<int:equipo_id>/eliminar", methods=["POST"])
+@admin_required
+def eliminar_equipo(equipo_id):
+    conn = get_db_connection()
+
+    equipo = conn.execute("""
+        SELECT id
+        FROM equipos
+        WHERE id = ? AND activo = 1
+    """, (equipo_id,)).fetchone()
+
+    if not equipo:
         conn.close()
-        flash("Acta de entrega no encontrada.", "error")
-        return redirect(url_for("entregas_page"))
-
-    number = (request.form.get("number") or "").strip()
-    date_value = (request.form.get("date") or "").strip()
-    client = (request.form.get("client") or "").strip()
-    client_document = (request.form.get("clientDocument") or "").strip()
-    receives_name = (request.form.get("receivesName") or "").strip()
-    delivers_name = (request.form.get("deliversName") or "").strip()
-    deliverer_text = (request.form.get("delivererText") or "").strip()
-    intro_text = (request.form.get("introText") or "").strip()
-    estado = (request.form.get("estado") or "borrador").strip()
-
-    if estado not in {"borrador", "emitida"}:
-        estado = "borrador"
-
-    items = entrega_payload.get("items", []) or []
-
-    serials_flat = request.form.getlist("serials[]")
-    serial_idx = 0
-
-    for item in items:
-        quantity = int(item.get("quantity") or 1)
-        if quantity < 1:
-            quantity = 1
-
-        new_serials = []
-        for _ in range(quantity):
-            serial_value = ""
-            if serial_idx < len(serials_flat):
-                serial_value = (serials_flat[serial_idx] or "").strip()
-            new_serials.append(serial_value)
-            serial_idx += 1
-
-        item["serials"] = new_serials
-
-    entrega_payload["document"] = {
-        "dbId": entrega_id,
-        "cotizacionId": entrega_row["cotizacion_id"],
-        "number": number,
-        "date": date_value,
-        "client": client,
-        "clientDocument": client_document,
-        "receivesName": receives_name,
-        "deliversName": delivers_name,
-        "delivererText": deliverer_text,
-        "introText": intro_text
-    }
-
-    current_user = get_current_user()
-    current_user_id = current_user["id"] if current_user else None
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return redirect(url_for("equipos_page"))
 
     conn.execute("""
-        UPDATE entregas
-        SET numero_entrega = ?,
-            fecha_entrega = ?,
-            cliente_nombre = ?,
-            cliente_documento = ?,
-            recibe_nombre = ?,
-            entrega_nombre = ?,
-            entrega_documento_texto = ?,
-            texto_intro = ?,
-            payload_json = ?,
-            estado = ?,
-            actualizado_por_user_id = ?,
-            actualizado_en = ?
+        UPDATE equipos
+        SET activo = 0
         WHERE id = ?
-    """, (
-        number,
-        date_value,
-        client,
-        client_document,
-        receives_name,
-        delivers_name,
-        deliverer_text,
-        intro_text,
-        json.dumps(entrega_payload, ensure_ascii=False),
-        estado,
-        current_user_id,
-        now_str,
-        entrega_id
-    ))
+    """, (equipo_id,))
 
     conn.commit()
     conn.close()
 
-    flash("Acta de entrega actualizada correctamente.", "success")
-    return redirect(url_for("entrega_detail_page", entrega_id=entrega_id))
+    return redirect(url_for("equipos_page"))
 
 
-@app.route("/garantias")
+# =========================
+# Plantillas
+# =========================
+
+@app.route("/plantillas")
 @login_required
-def garantias_page():
+def plantillas_page():
+    conn = get_db_connection()
+
+    equipo_id_raw = (request.args.get("equipo_id") or "").strip()
+    action = (request.args.get("action") or "").strip().lower()
+
+    if action not in {"create", "view"}:
+        action = ""
+
+    equipo_id = None
+    if equipo_id_raw:
+        try:
+            equipo_id = int(equipo_id_raw)
+        except ValueError:
+            equipo_id = None
+
+    equipos = conn.execute("""
+        SELECT *
+        FROM equipos
+        WHERE activo = 1
+        ORDER BY id DESC
+    """).fetchall()
+
+    selected_equipo = None
+    if equipo_id:
+        selected_equipo = conn.execute("""
+            SELECT *
+            FROM equipos
+            WHERE id = ? AND activo = 1
+        """, (equipo_id,)).fetchone()
+
+        if not selected_equipo:
+            equipo_id = None
+
+    filter_by_equipo = bool(equipo_id and action == "view")
+
+    if filter_by_equipo:
+        plantillas_rows = conn.execute("""
+            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+            FROM plantillas p
+            LEFT JOIN equipos e ON e.id = p.equipo_id
+            WHERE p.activo = 1
+              AND p.equipo_id = ?
+            ORDER BY p.id DESC
+        """, (equipo_id,)).fetchall()
+    else:
+        plantillas_rows = conn.execute("""
+            SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+            FROM plantillas p
+            LEFT JOIN equipos e ON e.id = p.equipo_id
+            WHERE p.activo = 1
+            ORDER BY p.id DESC
+        """).fetchall()
+
+    plantillas = []
+    for p in plantillas_rows:
+        children = get_plantilla_children(conn, p["id"])
+
+        plantilla_dict = dict(p)
+        plantilla_dict["especificaciones"] = [dict(x) for x in children["especificaciones"]]
+        plantilla_dict["usos"] = [dict(x) for x in children["usos"]]
+        plantilla_dict["accesorios"] = [dict(x) for x in children["accesorios"]]
+        plantilla_dict["ventajas"] = [dict(x) for x in children["ventajas"]]
+        plantillas.append(plantilla_dict)
+
+    conn.close()
+
+    return render_template(
+        "plantillas.html",
+        equipos=equipos,
+        plantillas=plantillas,
+        active_page="plantillas",
+        selected_equipo=selected_equipo,
+        selected_equipo_id=equipo_id,
+        current_action=action,
+        filter_by_equipo=filter_by_equipo
+    )
+
+
+@app.route("/plantillas/nueva", methods=["POST"])
+@editor_required
+def crear_plantilla():
+    modo_creacion = request.form.get("modo_creacion", "vacia").strip()
+    equipo_id_raw = request.form.get("equipo_id", "").strip()
+
+    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
+    nombre_comercial = request.form.get("nombre_comercial", "").strip()
+    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
+    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
+    imagen = request.form.get("plantilla_imagen", "").strip()
+    precio_base = request.form.get("precio_base", "").strip()
+    mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
+
+    if not nombre_plantilla:
+        return redirect(url_for("plantillas_page"))
+
+    try:
+        precio_base_val = float(precio_base) if precio_base else 0
+    except ValueError:
+        precio_base_val = 0
+
+    conn = get_db_connection()
+
+    equipo_id = None
+
+    if modo_creacion == "desde_equipo":
+        if not equipo_id_raw:
+            conn.close()
+            return redirect(url_for("plantillas_page"))
+
+        try:
+            equipo_id = int(equipo_id_raw)
+        except ValueError:
+            conn.close()
+            return redirect(url_for("plantillas_page"))
+
+        equipo_base = conn.execute("""
+            SELECT *
+            FROM equipos
+            WHERE id = ? AND activo = 1
+        """, (equipo_id,)).fetchone()
+
+        if not equipo_base:
+            conn.close()
+            return redirect(url_for("plantillas_page"))
+
+        snapshot = build_initial_template_data_from_equipo(equipo_base)
+
+        if not nombre_comercial:
+            nombre_comercial = snapshot["nombre_comercial"]
+
+        if not descripcion_breve:
+            descripcion_breve = snapshot["descripcion_breve"]
+
+        if not descripcion_larga:
+            descripcion_larga = snapshot["descripcion_larga"]
+
+        if not imagen:
+            imagen = snapshot["imagen"]
+
+    conn.execute("""
+        INSERT INTO plantillas (
+            equipo_id,
+            nombre_plantilla,
+            nombre_comercial,
+            descripcion_breve,
+            descripcion_larga,
+            imagen,
+            precio_base,
+            mostrar_precio_por_defecto,
+            activo
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    """, (
+        equipo_id,
+        nombre_plantilla,
+        nombre_comercial,
+        descripcion_breve,
+        descripcion_larga,
+        imagen,
+        precio_base_val,
+        mostrar_precio
+    ))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("plantillas_page"))
+
+
+@app.route("/plantillas/<int:plantilla_id>/editar", methods=["POST"])
+@editor_required
+def editar_plantilla(plantilla_id):
+    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
+    nombre_comercial = request.form.get("nombre_comercial", "").strip()
+    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
+    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
+    imagen = request.form.get("plantilla_imagen", "").strip()
+    precio_base = request.form.get("precio_base", "").strip()
+    mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
+
+    if not nombre_plantilla:
+        return redirect(url_for("plantillas_page"))
+
+    try:
+        precio_base_val = float(precio_base) if precio_base else 0
+    except ValueError:
+        precio_base_val = 0
+
+    spec_parametros = request.form.getlist("spec_parametro[]")
+    spec_detalles = request.form.getlist("spec_detalle[]")
+
+    specs = []
+    max_specs = max(len(spec_parametros), len(spec_detalles))
+    for i in range(max_specs):
+        specs.append({
+            "parametro": spec_parametros[i] if i < len(spec_parametros) else "",
+            "detalle": spec_detalles[i] if i < len(spec_detalles) else "",
+        })
+
+    usos = request.form.getlist("uso_texto[]")
+    accesorios = request.form.getlist("accesorio_texto[]")
+    ventajas = request.form.getlist("ventaja_texto[]")
+
+    conn = get_db_connection()
+
+    plantilla = conn.execute("""
+        SELECT id
+        FROM plantillas
+        WHERE id = ? AND activo = 1
+    """, (plantilla_id,)).fetchone()
+
+    if not plantilla:
+        conn.close()
+        return redirect(url_for("plantillas_page"))
+
+    conn.execute("""
+        UPDATE plantillas
+        SET nombre_plantilla = ?,
+            nombre_comercial = ?,
+            descripcion_breve = ?,
+            descripcion_larga = ?,
+            imagen = ?,
+            precio_base = ?,
+            mostrar_precio_por_defecto = ?
+        WHERE id = ?
+    """, (
+        nombre_plantilla,
+        nombre_comercial,
+        descripcion_breve,
+        descripcion_larga,
+        imagen,
+        precio_base_val,
+        mostrar_precio,
+        plantilla_id
+    ))
+
+    replace_plantilla_children(
+        conn,
+        plantilla_id,
+        specs=specs,
+        usos=usos,
+        accesorios=accesorios,
+        ventajas=ventajas
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("plantillas_page"))
+
+
+@app.route("/plantillas/<int:plantilla_id>/eliminar", methods=["POST"])
+@admin_required
+def eliminar_plantilla(plantilla_id):
+    conn = get_db_connection()
+
+    plantilla = conn.execute("""
+        SELECT id
+        FROM plantillas
+        WHERE id = ? AND activo = 1
+    """, (plantilla_id,)).fetchone()
+
+    if not plantilla:
+        conn.close()
+        return redirect(url_for("plantillas_page"))
+
+    conn.execute("DELETE FROM plantillas_especificaciones WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_usos WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_accesorios WHERE plantilla_id = ?", (plantilla_id,))
+    conn.execute("DELETE FROM plantillas_ventajas WHERE plantilla_id = ?", (plantilla_id,))
+
+    conn.execute("""
+        UPDATE plantillas
+        SET activo = 0
+        WHERE id = ?
+    """, (plantilla_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("plantillas_page"))
+
+
+# =========================
+# Cotizaciones
+# =========================
+
+@app.route("/cotizaciones")
+@login_required
+def cotizaciones_page():
     conn = get_db_connection()
     ensure_auth_schema(conn)
 
-    garantias_rows = conn.execute("""
+    cotizaciones = conn.execute("""
         SELECT
-            g.*,
-            c.numero AS cotizacion_numero,
+            c.*,
             uc.username AS creado_por_username,
-            ua.username AS actualizado_por_username
-        FROM garantias g
-        LEFT JOIN cotizaciones c ON c.id = g.cotizacion_id
-        LEFT JOIN usuarios uc ON uc.id = g.creado_por_user_id
-        LEFT JOIN usuarios ua ON ua.id = g.actualizado_por_user_id
-        ORDER BY g.id DESC
+            ua.username AS actualizado_por_username,
+            (
+                SELECT COUNT(1)
+                FROM entregas e
+                WHERE e.cotizacion_id = c.id
+            ) AS entregas_count,
+            (
+                SELECT e.id
+                FROM entregas e
+                WHERE e.cotizacion_id = c.id
+                ORDER BY e.id DESC
+                LIMIT 1
+            ) AS ultima_entrega_id,
+            (
+                SELECT COUNT(1)
+                FROM garantias g
+                WHERE g.cotizacion_id = c.id
+            ) AS garantias_count
+        FROM cotizaciones c
+        LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
+        ORDER BY c.id DESC
     """).fetchall()
 
-    garantias = []
-    for row in garantias_rows:
-        item = dict(row)
-        item["estado_calculado"] = get_garantia_status(row["fecha_vencimiento"])
-        item["dias_restantes"] = get_garantia_days_remaining(row["fecha_vencimiento"])
-        garantias.append(item)
-
     conn.close()
-    return render_template("garantias.html", garantias=garantias, active_page="garantias")
+    return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
+
+
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
 @login_required
 def cotizacion_json(cotizacion_id):
@@ -1252,15 +1522,12 @@ def cotizacion_json(cotizacion_id):
     return jsonify(payload)
 
 
-
 @app.route("/cotizaciones/guardar", methods=["POST"])
 @editor_required
 def guardar_cotizacion():
     conn = None
     try:
         data = request.get_json(force=True)
-        print("=== GUARDAR COTIZACION ===")
-        print(data)
 
         quotation = data.get("quotation", {}) or {}
         items = data.get("items", []) or []
@@ -1275,9 +1542,11 @@ def guardar_cotizacion():
         forma_pago = (quotation.get("paymentTerms") or "").strip()
         observaciones = (quotation.get("notes") or "").strip()
         db_id = quotation.get("dbId")
+
         current_user = get_current_user()
         current_user_id = current_user["id"] if current_user else None
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         total = 0
         for item in items:
             try:
@@ -1298,6 +1567,7 @@ def guardar_cotizacion():
             "selectedItemId": selected_item_id
         }
         payload_json = json.dumps(full_payload, ensure_ascii=False)
+
         conn = get_db_connection()
         ensure_auth_schema(conn)
 
@@ -1314,7 +1584,6 @@ def guardar_cotizacion():
                 current_user_id, now_str, db_id
             ))
             cotizacion_id = db_id
-
             conn.execute("DELETE FROM cotizacion_items WHERE cotizacion_id = ?", (cotizacion_id,))
         else:
             if not numero:
@@ -1392,10 +1661,6 @@ def guardar_cotizacion():
 
         conn.commit()
 
-        print("Cotización guardada con ID:", cotizacion_id)
-        print("Número:", numero)
-        print("Total:", total)
-
         return jsonify({
             "ok": True,
             "cotizacion_id": cotizacion_id,
@@ -1412,95 +1677,6 @@ def guardar_cotizacion():
     finally:
         if conn:
             conn.close()
-
-
-@app.route("/equipos/nuevo", methods=["POST"])
-@editor_required
-def crear_equipo():
-    nombre = request.form.get("nombre", "").strip()
-    marca = request.form.get("marca", "").strip()
-    modelo = request.form.get("modelo", "").strip()
-    origen = request.form.get("origen", "").strip()
-    garantia_base = request.form.get("garantia_base", "").strip()
-    descripcion_breve = request.form.get("descripcion_breve", "").strip()
-    descripcion_larga = request.form.get("descripcion_larga", "").strip()
-    imagen = request.form.get("imagen", "").strip()
-
-    if not nombre:
-        return redirect(url_for("equipos_page"))
-
-    conn = get_db_connection()
-    conn.execute("""
-        INSERT INTO equipos (
-            nombre, marca, modelo, origen, garantia_base,
-            descripcion_breve, descripcion_larga, imagen, activo
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-    """, (
-        nombre, marca, modelo, origen, garantia_base,
-        descripcion_breve, descripcion_larga, imagen
-    ))
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("equipos_page"))
-
-@app.route("/equipos/<int:equipo_id>/eliminar", methods=["POST"])
-@admin_required
-def eliminar_equipo(equipo_id):
-    conn = get_db_connection()
-
-    equipo = conn.execute("""
-        SELECT id
-        FROM equipos
-        WHERE id = ? AND activo = 1
-    """, (equipo_id,)).fetchone()
-
-    if not equipo:
-        conn.close()
-        return redirect(url_for("equipos_page"))
-
-    conn.execute("""
-        UPDATE equipos
-        SET activo = 0
-        WHERE id = ?
-    """, (equipo_id,))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("equipos_page"))
-
-@app.route("/plantillas/<int:plantilla_id>/eliminar", methods=["POST"])
-@admin_required
-def eliminar_plantilla(plantilla_id):
-    conn = get_db_connection()
-
-    plantilla = conn.execute("""
-        SELECT id
-        FROM plantillas
-        WHERE id = ? AND activo = 1
-    """, (plantilla_id,)).fetchone()
-
-    if not plantilla:
-        conn.close()
-        return redirect(url_for("plantillas_page"))
-
-    conn.execute("DELETE FROM plantillas_especificaciones WHERE plantilla_id = ?", (plantilla_id,))
-    conn.execute("DELETE FROM plantillas_usos WHERE plantilla_id = ?", (plantilla_id,))
-    conn.execute("DELETE FROM plantillas_accesorios WHERE plantilla_id = ?", (plantilla_id,))
-    conn.execute("DELETE FROM plantillas_ventajas WHERE plantilla_id = ?", (plantilla_id,))
-
-    conn.execute("""
-        UPDATE plantillas
-        SET activo = 0
-        WHERE id = ?
-    """, (plantilla_id,))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("plantillas_page"))
 
 
 @app.route("/cotizaciones/<int:cotizacion_id>/eliminar", methods=["POST"])
@@ -1526,6 +1702,8 @@ def eliminar_cotizacion(cotizacion_id):
     conn.close()
 
     return redirect(url_for("cotizaciones_page"))
+
+
 @app.route("/cotizaciones/<int:cotizacion_id>/consolidar", methods=["POST"])
 @editor_required
 def consolidar_cotizacion(cotizacion_id):
@@ -1560,6 +1738,155 @@ def consolidar_cotizacion(cotizacion_id):
 
     flash("Cotización consolidada correctamente.", "success")
     return redirect(url_for("cotizaciones_page"))
+
+
+# =========================
+# Entregas
+# =========================
+
+@app.route("/entregas")
+@login_required
+def entregas_page():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    entregas = conn.execute("""
+        SELECT
+            e.*,
+            c.numero AS cotizacion_numero,
+            uc.username AS creado_por_username,
+            ua.username AS actualizado_por_username
+        FROM entregas e
+        LEFT JOIN cotizaciones c ON c.id = e.cotizacion_id
+        LEFT JOIN usuarios uc ON uc.id = e.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = e.actualizado_por_user_id
+        ORDER BY e.id DESC
+    """).fetchall()
+
+    conn.close()
+    return render_template("entregas.html", entregas=entregas, active_page="entregas")
+
+
+@app.route("/entregas/<int:entrega_id>")
+@login_required
+def entrega_detail_page(entrega_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
+    conn.close()
+
+    if not entrega_row:
+        flash("Acta de entrega no encontrada.", "error")
+        return redirect(url_for("entregas_page"))
+
+    return render_template(
+        "entrega_detail.html",
+        entrega=entrega_row,
+        entrega_payload=entrega_payload,
+        active_page="entregas"
+    )
+
+
+@app.route("/entregas/<int:entrega_id>/guardar", methods=["POST"])
+@editor_required
+def guardar_entrega(entrega_id):
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
+    if not entrega_row:
+        conn.close()
+        flash("Acta de entrega no encontrada.", "error")
+        return redirect(url_for("entregas_page"))
+
+    number = (request.form.get("number") or "").strip()
+    date_value = (request.form.get("date") or "").strip()
+    client = (request.form.get("client") or "").strip()
+    client_document = (request.form.get("clientDocument") or "").strip()
+    receives_name = (request.form.get("receivesName") or "").strip()
+    delivers_name = (request.form.get("deliversName") or "").strip()
+    deliverer_text = (request.form.get("delivererText") or "").strip()
+    intro_text = (request.form.get("introText") or "").strip()
+    estado = (request.form.get("estado") or "borrador").strip()
+
+    if estado not in {"borrador", "emitida"}:
+        estado = "borrador"
+
+    items = entrega_payload.get("items", []) or []
+
+    serials_flat = request.form.getlist("serials[]")
+    serial_idx = 0
+
+    for item in items:
+        quantity = int(item.get("quantity") or 1)
+        if quantity < 1:
+            quantity = 1
+
+        new_serials = []
+        for _ in range(quantity):
+            serial_value = ""
+            if serial_idx < len(serials_flat):
+                serial_value = (serials_flat[serial_idx] or "").strip()
+            new_serials.append(serial_value)
+            serial_idx += 1
+
+        item["serials"] = new_serials
+
+    entrega_payload["document"] = {
+        "dbId": entrega_id,
+        "cotizacionId": entrega_row["cotizacion_id"],
+        "number": number,
+        "date": date_value,
+        "client": client,
+        "clientDocument": client_document,
+        "receivesName": receives_name,
+        "deliversName": delivers_name,
+        "delivererText": deliverer_text,
+        "introText": intro_text
+    }
+
+    current_user = get_current_user()
+    current_user_id = current_user["id"] if current_user else None
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn.execute("""
+        UPDATE entregas
+        SET numero_entrega = ?,
+            fecha_entrega = ?,
+            cliente_nombre = ?,
+            cliente_documento = ?,
+            recibe_nombre = ?,
+            entrega_nombre = ?,
+            entrega_documento_texto = ?,
+            texto_intro = ?,
+            payload_json = ?,
+            estado = ?,
+            actualizado_por_user_id = ?,
+            actualizado_en = ?
+        WHERE id = ?
+    """, (
+        number,
+        date_value,
+        client,
+        client_document,
+        receives_name,
+        delivers_name,
+        deliverer_text,
+        intro_text,
+        json.dumps(entrega_payload, ensure_ascii=False),
+        estado,
+        current_user_id,
+        now_str,
+        entrega_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    flash("Acta de entrega actualizada correctamente.", "success")
+    return redirect(url_for("entrega_detail_page", entrega_id=entrega_id))
+
 
 @app.route("/cotizaciones/<int:cotizacion_id>/generar-entrega", methods=["POST"])
 @editor_required
@@ -1597,8 +1924,6 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
         return redirect(url_for("entregas_page"))
 
     cot_payload = load_cotizacion_payload(conn, cotizacion_id)
-
-    
     if not cot_payload:
         conn.close()
         flash("No se pudo reconstruir la cotización para generar el acta de entrega.", "error")
@@ -1664,6 +1989,41 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
 
     flash(f"Acta de entrega {numero_entrega} generada correctamente.", "success")
     return redirect(url_for("entregas_page"))
+
+
+# =========================
+# Garantías
+# =========================
+
+@app.route("/garantias")
+@login_required
+def garantias_page():
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    garantias_rows = conn.execute("""
+        SELECT
+            g.*,
+            c.numero AS cotizacion_numero,
+            uc.username AS creado_por_username,
+            ua.username AS actualizado_por_username
+        FROM garantias g
+        LEFT JOIN cotizaciones c ON c.id = g.cotizacion_id
+        LEFT JOIN usuarios uc ON uc.id = g.creado_por_user_id
+        LEFT JOIN usuarios ua ON ua.id = g.actualizado_por_user_id
+        ORDER BY g.id DESC
+    """).fetchall()
+
+    garantias = []
+    for row in garantias_rows:
+        item = dict(row)
+        item["estado_calculado"] = get_garantia_status(row["fecha_vencimiento"])
+        item["dias_restantes"] = get_garantia_days_remaining(row["fecha_vencimiento"])
+        garantias.append(item)
+
+    conn.close()
+    return render_template("garantias.html", garantias=garantias, active_page="garantias")
+
 
 @app.route("/cotizaciones/<int:cotizacion_id>/generar-garantia", methods=["POST"])
 @editor_required
@@ -1761,176 +2121,7 @@ def generar_garantia_desde_cotizacion(cotizacion_id):
 
     flash(f"Garantía {numero_garantia} generada correctamente.", "success")
     return redirect(url_for("garantias_page"))
-@app.route("/plantillas/nueva", methods=["POST"])
-@editor_required
-def crear_plantilla():
-    modo_creacion = request.form.get("modo_creacion", "vacia").strip()
-    equipo_id_raw = request.form.get("equipo_id", "").strip()
 
-    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
-    nombre_comercial = request.form.get("nombre_comercial", "").strip()
-    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
-    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
-    imagen = request.form.get("plantilla_imagen", "").strip()
-    precio_base = request.form.get("precio_base", "").strip()
-    mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
-
-    if not nombre_plantilla:
-        return redirect(url_for("plantillas_page"))
-
-    try:
-        precio_base_val = float(precio_base) if precio_base else 0
-    except ValueError:
-        precio_base_val = 0
-
-    conn = get_db_connection()
-
-    equipo_id = None
-    equipo_base = None
-
-    if modo_creacion == "desde_equipo":
-        if not equipo_id_raw:
-            conn.close()
-            return redirect(url_for("plantillas_page"))
-
-        try:
-            equipo_id = int(equipo_id_raw)
-        except ValueError:
-            conn.close()
-            return redirect(url_for("plantillas_page"))
-
-        equipo_base = conn.execute("""
-            SELECT *
-            FROM equipos
-            WHERE id = ? AND activo = 1
-        """, (equipo_id,)).fetchone()
-
-        if not equipo_base:
-            conn.close()
-            return redirect(url_for("plantillas_page"))
-
-        snapshot = build_initial_template_data_from_equipo(equipo_base)
-
-        if not nombre_comercial:
-            nombre_comercial = snapshot["nombre_comercial"]
-
-        if not descripcion_breve:
-            descripcion_breve = snapshot["descripcion_breve"]
-
-        if not descripcion_larga:
-            descripcion_larga = snapshot["descripcion_larga"]
-
-        if not imagen:
-            imagen = snapshot["imagen"]
-
-    conn.execute("""
-        INSERT INTO plantillas (
-            equipo_id,
-            nombre_plantilla,
-            nombre_comercial,
-            descripcion_breve,
-            descripcion_larga,
-            imagen,
-            precio_base,
-            mostrar_precio_por_defecto,
-            activo
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-    """, (
-        equipo_id,
-        nombre_plantilla,
-        nombre_comercial,
-        descripcion_breve,
-        descripcion_larga,
-        imagen,
-        precio_base_val,
-        mostrar_precio
-    ))
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("plantillas_page"))
-
-@app.route("/plantillas/<int:plantilla_id>/editar", methods=["POST"])
-@editor_required
-def editar_plantilla(plantilla_id):
-    nombre_plantilla = request.form.get("nombre_plantilla", "").strip()
-    nombre_comercial = request.form.get("nombre_comercial", "").strip()
-    descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
-    descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
-    imagen = request.form.get("plantilla_imagen", "").strip()
-    precio_base = request.form.get("precio_base", "").strip()
-    mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
-
-    if not nombre_plantilla:
-        return redirect(url_for("plantillas_page"))
-
-    try:
-        precio_base_val = float(precio_base) if precio_base else 0
-    except ValueError:
-        precio_base_val = 0
-
-    spec_parametros = request.form.getlist("spec_parametro[]")
-    spec_detalles = request.form.getlist("spec_detalle[]")
-
-    specs = []
-    max_specs = max(len(spec_parametros), len(spec_detalles))
-    for i in range(max_specs):
-        specs.append({
-            "parametro": spec_parametros[i] if i < len(spec_parametros) else "",
-            "detalle": spec_detalles[i] if i < len(spec_detalles) else "",
-        })
-
-    usos = request.form.getlist("uso_texto[]")
-    accesorios = request.form.getlist("accesorio_texto[]")
-    ventajas = request.form.getlist("ventaja_texto[]")
-
-    conn = get_db_connection()
-
-    plantilla = conn.execute("""
-        SELECT id
-        FROM plantillas
-        WHERE id = ? AND activo = 1
-    """, (plantilla_id,)).fetchone()
-
-    if not plantilla:
-        conn.close()
-        return redirect(url_for("plantillas_page"))
-
-    conn.execute("""
-        UPDATE plantillas
-        SET nombre_plantilla = ?,
-            nombre_comercial = ?,
-            descripcion_breve = ?,
-            descripcion_larga = ?,
-            imagen = ?,
-            precio_base = ?,
-            mostrar_precio_por_defecto = ?
-        WHERE id = ?
-    """, (
-        nombre_plantilla,
-        nombre_comercial,
-        descripcion_breve,
-        descripcion_larga,
-        imagen,
-        precio_base_val,
-        mostrar_precio,
-        plantilla_id
-    ))
-
-    replace_plantilla_children(
-        conn,
-        plantilla_id,
-        specs=specs,
-        usos=usos,
-        accesorios=accesorios,
-        ventajas=ventajas
-    )
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("plantillas_page"))
 
 if __name__ == "__main__":
     ensure_upload_dir()
