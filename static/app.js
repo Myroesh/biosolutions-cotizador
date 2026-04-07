@@ -415,53 +415,74 @@ function chunkArray(arr, size) {
   return chunks;
 }
 
-function splitLongText(text, maxChars = 760) {
+function splitLongText(text, maxChars = 680) {
   const clean = String(text || "").trim();
   if (!clean) return [];
 
-  if (clean.length <= maxChars) {
-    return [clean];
-  }
+  const paragraphs = clean
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(Boolean);
 
   const parts = [];
-  let start = 0;
 
-  while (start < clean.length) {
-    let end = Math.min(start + maxChars, clean.length);
-
-    if (end < clean.length) {
-      const lastBreak = Math.max(
-        clean.lastIndexOf("\n", end),
-        clean.lastIndexOf(". ", end),
-        clean.lastIndexOf("; ", end),
-        clean.lastIndexOf(": ", end),
-        clean.lastIndexOf(", ", end),
-        clean.lastIndexOf(" ", end)
-      );
-
-      if (lastBreak > start + 180) {
-        end = lastBreak + 1;
-      }
+  paragraphs.forEach(paragraph => {
+    if (paragraph.length <= maxChars) {
+      parts.push(paragraph);
+      return;
     }
 
-    const slice = clean.slice(start, end).trim();
-    if (slice) parts.push(slice);
-    start = end;
-  }
+    let start = 0;
+    while (start < paragraph.length) {
+      let end = Math.min(start + maxChars, paragraph.length);
+
+      if (end < paragraph.length) {
+        const lastBreak = Math.max(
+          paragraph.lastIndexOf(". ", end),
+          paragraph.lastIndexOf("; ", end),
+          paragraph.lastIndexOf(": ", end),
+          paragraph.lastIndexOf(", ", end),
+          paragraph.lastIndexOf(" ", end)
+        );
+
+        if (lastBreak > start + 180) {
+          end = lastBreak + 1;
+        }
+      }
+
+      const slice = paragraph.slice(start, end).trim();
+      if (slice) parts.push(slice);
+      start = end;
+    }
+  });
 
   return parts.filter(Boolean);
 }
-function estimateTextUnits(text, charsPerUnit = 95) {
+
+function estimateTextUnits(text, charsPerUnit = 90) {
   const clean = String(text || "").trim();
   if (!clean) return 0;
-  return Math.max(1, Math.ceil(clean.length / charsPerUnit));
+
+  const charUnits = Math.ceil(clean.length / charsPerUnit);
+  const lineBreakUnits = (clean.match(/\n/g) || []).length;
+  const paragraphUnits = (clean.match(/\n{2,}/g) || []).length * 2;
+
+  return Math.max(1, charUnits + lineBreakUnits + paragraphUnits);
 }
 
 function estimateSpecUnits(spec) {
   const param = String(spec?.param || spec?.parametro || "").trim();
   const value = String(spec?.value || spec?.detalle || "").trim();
-  const totalChars = param.length + value.length;
-  return Math.max(1, Math.ceil(totalChars / 72));
+
+  const paramUnits = Math.ceil(param.length / 38);
+  const valueUnits = Math.ceil(value.length / 58);
+  const lineBreakUnits = (value.match(/\n/g) || []).length;
+
+  return Math.max(1, paramUnits + valueUnits + lineBreakUnits);
+}
+
+function estimateListItemUnits(text, charsPerUnit = 42) {
+  return estimateTextUnits(text, charsPerUnit);
 }
 
 function takeTextPartsByBudget(parts, startIndex, maxUnits) {
@@ -470,7 +491,8 @@ function takeTextPartsByBudget(parts, startIndex, maxUnits) {
   const taken = [];
 
   while (i < parts.length) {
-    const units = estimateTextUnits(parts[i]);
+    const units = estimateTextUnits(parts[i], 90);
+
     if (taken.length > 0 && used + units > maxUnits) break;
 
     if (taken.length === 0 && units > maxUnits) {
@@ -491,13 +513,14 @@ function takeTextPartsByBudget(parts, startIndex, maxUnits) {
   };
 }
 
-function takeSimpleListByBudget(items, startIndex, maxUnits, charsPerUnit = 45) {
+function takeSimpleListByBudget(items, startIndex, maxUnits, charsPerUnit = 42) {
   let used = 0;
   let i = startIndex;
   const taken = [];
 
   while (i < items.length) {
-    const units = estimateTextUnits(items[i], charsPerUnit);
+    const units = estimateListItemUnits(items[i], charsPerUnit);
+
     if (taken.length > 0 && used + units > maxUnits) break;
 
     if (taken.length === 0 && units > maxUnits) {
@@ -525,6 +548,7 @@ function takeSpecsByBudget(items, startIndex, maxUnits) {
 
   while (i < items.length) {
     const units = estimateSpecUnits(items[i]);
+
     if (taken.length > 0 && used + units > maxUnits) break;
 
     if (taken.length === 0 && units > maxUnits) {
@@ -544,6 +568,23 @@ function takeSpecsByBudget(items, startIndex, maxUnits) {
     usedUnits: used
   };
 }
+
+function getPageBudgets(item, pageNo) {
+  const hasImage = !!(item && item.imageSrc);
+
+  if (pageNo === 0) {
+    return {
+      left: 19,
+      right: hasImage ? 9 : 13
+    };
+  }
+
+  return {
+    left: 24,
+    right: 18
+  };
+}
+
 function buildHeaderMetaGrid(item, qty, subtotal, showSubtotal = true) {
   return `
     <div class="meta-grid">
@@ -581,12 +622,12 @@ function buildDescriptionCard(descriptionPart, highlightsChunk) {
   `;
 }
 
-function buildSpecsCard(specsChunk) {
+function buildSpecsCard(specsChunk, title = "Especificaciones técnicas") {
   if (!specsChunk.length) return "";
 
   return `
     <div class="card">
-      <h3 class="section-title">Especificaciones técnicas</h3>
+      <h3 class="section-title">${title}</h3>
       <table class="spec-table">
         <thead>
           <tr>
@@ -607,13 +648,13 @@ function buildSpecsCard(specsChunk) {
   `;
 }
 
-function buildImageAndListsCard(item, usesChunk, accessoriesChunk, advantagesChunk, showImage = true) {
+function buildImageAndListsCard(item, usesChunk, accessoriesChunk, advantagesChunk, showImage = true, titlePrefix = "") {
   if (!showImage && !usesChunk.length && !accessoriesChunk.length && !advantagesChunk.length) return "";
 
   return `
     <div class="card">
       ${showImage ? `
-        <h3 class="section-title">Imagen del equipo</h3>
+        <h3 class="section-title">${titlePrefix ? `${titlePrefix} · ` : ""}Imagen del equipo</h3>
         <div class="image-box">
           ${item.imageSrc
             ? `<img src="${item.imageSrc}" alt="${escapeHtml(item.title || "")}">`
@@ -623,7 +664,7 @@ function buildImageAndListsCard(item, usesChunk, accessoriesChunk, advantagesChu
       ` : ""}
 
       ${usesChunk.length ? `
-        <h3 class="section-title" style="margin-top:16px;">Aplicaciones / usos</h3>
+        <h3 class="section-title" style="margin-top:${showImage ? "16px" : "0"};">Aplicaciones / usos</h3>
         <div class="badge-row">
           ${usesChunk.map(u => `<span class="badge">${escapeHtml(u)}</span>`).join("")}
         </div>
@@ -664,12 +705,12 @@ function buildItemPageFrame(item, options = {}) {
         <section class="preview-hero">
           <div>
             <img src="/static/logo_biosolutions.png" alt="BioSolutions" class="preview-logo" />
-            ${continuation ? `<div class="continuation-chip">Continuación · Página interna ${continuationIndex}</div>` : ""}
+            ${continuation ? `<div class="continuation-chip">Continuación técnica · Página ${continuationIndex}</div>` : ""}
           </div>
           <div class="doc-chip">
             <span class="label">Documento</span>
             <span class="value ${continuation ? "is-continuation" : ""}">
-              ${continuation ? "Continuación de ficha" : "Ficha técnica"}
+              ${continuation ? "Ficha técnica complementaria" : "Ficha técnica"}
             </span>
           </div>
         </section>
@@ -691,7 +732,7 @@ function buildItemPageFrame(item, options = {}) {
 }
 
 function buildItemPages(item) {
-  const descriptionParts = splitLongText(item.descriptionLong || "", 760);
+  const descriptionParts = splitLongText(item.descriptionLong || "", 680);
   const highlights = Array.isArray(item.highlights) ? item.highlights : [];
   const specs = Array.isArray(item.specs) ? item.specs : [];
   const uses = Array.isArray(item.uses) ? item.uses : [];
@@ -718,102 +759,173 @@ function buildItemPages(item) {
     advantagesIndex < advantages.length
   ) {
     const isContinuation = pageNo > 0;
+    const budgets = getPageBudgets(item, pageNo);
 
-    // LETTER: menos espacio vertical que A4
-    const leftBudget = isContinuation ? 26 : 21;
-    const rightBudget = isContinuation ? 18 : 13;
+    let leftRemaining = budgets.left;
+    let rightRemaining = budgets.right;
 
-    let leftRemaining = leftBudget;
-    let rightRemaining = rightBudget;
+    let descriptionPart = "";
+    let highlightsChunk = [];
+    let specsChunkTop = [];
+    let specsChunkBottom = [];
+    let usesChunk = [];
+    let accessoriesChunk = [];
+    let advantagesChunk = [];
 
-    const descTake = takeTextPartsByBudget(
-      descriptionParts,
-      descIndex,
-      Math.max(8, leftRemaining - 6)
-    );
-    const descriptionPart = descTake.items.join("\n\n");
-    descIndex = descTake.nextIndex;
-    leftRemaining -= descTake.usedUnits;
+    if (!isContinuation) {
+      const descTake = takeTextPartsByBudget(
+        descriptionParts,
+        descIndex,
+        Math.max(6, leftRemaining - 5)
+      );
+      descriptionPart = descTake.items.join("\n\n");
+      descIndex = descTake.nextIndex;
+      leftRemaining -= descTake.usedUnits;
 
-    const highlightsTake = takeSimpleListByBudget(
-      highlights,
-      highlightsIndex,
-      Math.max(0, Math.min(5, leftRemaining)),
-      48
-    );
-    const highlightsChunk = highlightsTake.items;
-    highlightsIndex = highlightsTake.nextIndex;
-    leftRemaining -= highlightsTake.usedUnits;
+      const highlightsTake = takeSimpleListByBudget(
+        highlights,
+        highlightsIndex,
+        Math.max(0, Math.min(4, leftRemaining)),
+        48
+      );
+      highlightsChunk = highlightsTake.items;
+      highlightsIndex = highlightsTake.nextIndex;
+      leftRemaining -= highlightsTake.usedUnits;
 
-    const specsTake = takeSpecsByBudget(
-      specs,
-      specsIndex,
-      Math.max(0, leftRemaining)
-    );
-    const specsChunk = specsTake.items;
-    specsIndex = specsTake.nextIndex;
-    leftRemaining -= specsTake.usedUnits;
+      const specsTake = takeSpecsByBudget(
+        specs,
+        specsIndex,
+        Math.max(0, leftRemaining)
+      );
+      specsChunkTop = specsTake.items;
+      specsIndex = specsTake.nextIndex;
+      leftRemaining -= specsTake.usedUnits;
 
-    const showImage = pageNo === 0;
-    if (showImage && item.imageSrc) {
-      rightRemaining -= 6;
+      // En la primera página solo imagen + pocos usos.
+      if (item.imageSrc) {
+        rightRemaining -= 5;
+      }
+
+      const usesTake = takeSimpleListByBudget(
+        uses,
+        usesIndex,
+        Math.max(0, Math.min(3, rightRemaining)),
+        42
+      );
+      usesChunk = usesTake.items;
+      usesIndex = usesTake.nextIndex;
+      rightRemaining -= usesTake.usedUnits;
+
+    } else {
+      // Continuación: prioridad técnica.
+      const specsTakeTop = takeSpecsByBudget(
+        specs,
+        specsIndex,
+        Math.max(0, Math.min(12, leftRemaining))
+      );
+      specsChunkTop = specsTakeTop.items;
+      specsIndex = specsTakeTop.nextIndex;
+      leftRemaining -= specsTakeTop.usedUnits;
+
+      const specsTakeBottom = takeSpecsByBudget(
+        specs,
+        specsIndex,
+        Math.max(0, leftRemaining)
+      );
+      specsChunkBottom = specsTakeBottom.items;
+      specsIndex = specsTakeBottom.nextIndex;
+      leftRemaining -= specsTakeBottom.usedUnits;
+
+      const usesTake = takeSimpleListByBudget(
+        uses,
+        usesIndex,
+        Math.max(0, Math.min(4, rightRemaining)),
+        42
+      );
+      usesChunk = usesTake.items;
+      usesIndex = usesTake.nextIndex;
+      rightRemaining -= usesTake.usedUnits;
+
+      const accessoriesTake = takeSimpleListByBudget(
+        accessories,
+        accessoriesIndex,
+        Math.max(0, Math.min(7, rightRemaining)),
+        42
+      );
+      accessoriesChunk = accessoriesTake.items;
+      accessoriesIndex = accessoriesTake.nextIndex;
+      rightRemaining -= accessoriesTake.usedUnits;
+
+      const advantagesTake = takeSimpleListByBudget(
+        advantages,
+        advantagesIndex,
+        Math.max(0, rightRemaining),
+        42
+      );
+      advantagesChunk = advantagesTake.items;
+      advantagesIndex = advantagesTake.nextIndex;
+      rightRemaining -= advantagesTake.usedUnits;
+
+      // Si ya no hay specs pero todavía sobra izquierda, meter texto restante.
+      if (leftRemaining > 4 && descIndex < descriptionParts.length) {
+        const descTakeExtra = takeTextPartsByBudget(
+          descriptionParts,
+          descIndex,
+          leftRemaining
+        );
+        if (descTakeExtra.items.length) {
+          descriptionPart = descTakeExtra.items.join("\n\n");
+          descIndex = descTakeExtra.nextIndex;
+          leftRemaining -= descTakeExtra.usedUnits;
+        }
+      }
+
+      if (leftRemaining > 2 && highlightsIndex < highlights.length) {
+        const highlightsTakeExtra = takeSimpleListByBudget(
+          highlights,
+          highlightsIndex,
+          leftRemaining,
+          48
+        );
+        highlightsChunk = highlightsTakeExtra.items;
+        highlightsIndex = highlightsTakeExtra.nextIndex;
+        leftRemaining -= highlightsTakeExtra.usedUnits;
+      }
     }
-
-    const usesTake = takeSimpleListByBudget(
-      uses,
-      usesIndex,
-      Math.max(0, Math.min(4, rightRemaining)),
-      42
-    );
-    const usesChunk = usesTake.items;
-    usesIndex = usesTake.nextIndex;
-    rightRemaining -= usesTake.usedUnits;
-
-    const accessoriesTake = takeSimpleListByBudget(
-      accessories,
-      accessoriesIndex,
-      Math.max(0, Math.min(6, rightRemaining)),
-      42
-    );
-    const accessoriesChunk = accessoriesTake.items;
-    accessoriesIndex = accessoriesTake.nextIndex;
-    rightRemaining -= accessoriesTake.usedUnits;
-
-    const advantagesTake = takeSimpleListByBudget(
-      advantages,
-      advantagesIndex,
-      Math.max(0, rightRemaining),
-      42
-    );
-    const advantagesChunk = advantagesTake.items;
-    advantagesIndex = advantagesTake.nextIndex;
-    rightRemaining -= advantagesTake.usedUnits;
 
     const hasRealLeftContent =
       !!descriptionPart ||
       highlightsChunk.length > 0 ||
-      specsChunk.length > 0;
+      specsChunkTop.length > 0 ||
+      specsChunkBottom.length > 0;
 
     const hasRealRightContent =
+      (!isContinuation && !!item.imageSrc) ||
       usesChunk.length > 0 ||
       accessoriesChunk.length > 0 ||
-      advantagesChunk.length > 0 ||
-      (showImage && !!item.imageSrc);
+      advantagesChunk.length > 0;
 
     if (pageNo > 0 && !hasRealLeftContent && !hasRealRightContent) {
       break;
     }
 
     const leftTop = buildDescriptionCard(descriptionPart, highlightsChunk);
-    const leftBottom = buildSpecsCard(specsChunk);
+    const leftBottom = buildSpecsCard(
+      specsChunkTop,
+      isContinuation ? "Especificaciones técnicas complementarias" : "Especificaciones técnicas"
+    );
 
     const rightTop = buildImageAndListsCard(
       item,
       usesChunk,
       accessoriesChunk,
       advantagesChunk,
-      showImage
+      !isContinuation,
+      isContinuation ? "Continuación" : ""
     );
+
+    const rightBottom = "";
+    const extraLeftBottom = buildSpecsCard(specsChunkBottom, "Especificaciones técnicas complementarias");
 
     pages.push(
       buildItemPageFrame(item, {
@@ -821,18 +933,18 @@ function buildItemPages(item) {
         continuationIndex: pageNo + 1,
         topLeftHtml: leftTop,
         topRightHtml: rightTop,
-        bottomLeftHtml: leftBottom,
-        bottomRightHtml: ""
+        bottomLeftHtml: leftBottom + extraLeftBottom,
+        bottomRightHtml: rightBottom
       })
     );
 
     pageNo += 1;
-
     if (pageNo > 60) break;
   }
 
   return pages;
 }
+
 function buildItemPage(item) {
   return buildItemPages(item).join("");
 }
