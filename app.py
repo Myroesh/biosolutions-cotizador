@@ -577,7 +577,6 @@ def build_initial_entrega_payload(cot_row, cot_payload, numero_entrega):
 
         entrega_items.append({
             "id": item.get("id") or f"ent_item_{idx+1}",
-            "id": item.get("dbItemId") and f"dbitem_{item['dbItemId']}" or item.get("id") or f"item_{idx+1}",
             "title": (item.get("title") or "").strip(),
             "brand": (item.get("brand") or "").strip(),
             "model": (item.get("model") or "").strip(),
@@ -633,7 +632,6 @@ def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
 
         garantia_items.append({
             "id": item.get("id") or f"gar_item_{idx+1}",
-            "id": item.get("dbItemId") and f"dbitem_{item['dbItemId']}" or item.get("id") or f"item_{idx+1}",
             "title": (item.get("title") or "").strip(),
             "brand": (item.get("brand") or "").strip(),
             "model": (item.get("model") or "").strip(),
@@ -1338,7 +1336,8 @@ def plantillas_page():
         selected_equipo_id=equipo_id,
         current_action=action,
         filter_by_equipo=filter_by_equipo
-    )
+    )   
+
 
 @app.route("/plantillas/nueva", methods=["POST"])
 @editor_required
