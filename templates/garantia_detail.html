@@ -222,6 +222,83 @@
       grid-template-columns:1fr;
     }
   }
+    .doc-brand{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:18px;
+  }
+
+  .doc-brand-left{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .doc-logo{
+    width:84px;
+    height:auto;
+    display:block;
+  }
+
+  .doc-continuation-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#eef6fb;
+    color:#0a4570;
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+
+  .doc-chip{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:flex-end;
+    justify-content:center;
+    background:#0a5f8f;
+    color:#fff;
+    border-radius:12px;
+    padding:10px 16px;
+    min-width:150px;
+    box-shadow:0 8px 18px rgba(10,69,112,.12);
+  }
+
+  .doc-chip-label{
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    opacity:.85;
+    margin-bottom:4px;
+  }
+
+  .doc-chip-value{
+    font-size:15px;
+    font-weight:800;
+    line-height:1.2;
+  }
+
+  .doc-preview{
+    position:relative;
+  }
+
+  .doc-preview::after{
+    content:"DOCUMENTO";
+    position:absolute;
+    right:18px;
+    bottom:16px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.35em;
+    color:#0a4570;
+    opacity:.9;
+  }
 </style>
 {% endblock %}
 
@@ -302,7 +379,19 @@
   <section class="doc-preview">
     <div class="doc-left"></div>
     <div class="doc-content">
-      <div class="doc-title">Garantía</div>
+  <div class="doc-brand">
+    <div class="doc-brand-left">
+      <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="doc-logo">
+      <div class="doc-continuation-chip">Documento comercial</div>
+    </div>
+
+    <div class="doc-chip">
+      <span class="doc-chip-label">Documento</span>
+      <span class="doc-chip-value">Garantía</span>
+    </div>
+  </div>
+
+  <div class="doc-title">Garantía</div>
 
       <div class="doc-meta">
         <strong>Número:</strong> {{ garantia_payload['document']['number'] or '' }}<br>

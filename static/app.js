@@ -802,19 +802,40 @@ function buildItemPages(item) {
       leftRemaining -= specsTake.usedUnits;
 
       // En la primera página solo imagen + pocos usos.
+            // En la primera página mantener imagen, pero aprovechar mejor el espacio libre.
       if (item.imageSrc) {
-        rightRemaining -= 5;
+        rightRemaining -= 4;
       }
 
       const usesTake = takeSimpleListByBudget(
         uses,
         usesIndex,
-        Math.max(0, Math.min(3, rightRemaining)),
+        Math.max(0, Math.min(4, rightRemaining)),
         42
       );
       usesChunk = usesTake.items;
       usesIndex = usesTake.nextIndex;
       rightRemaining -= usesTake.usedUnits;
+
+      const accessoriesTake = takeSimpleListByBudget(
+        accessories,
+        accessoriesIndex,
+        Math.max(0, Math.min(3, rightRemaining)),
+        42
+      );
+      accessoriesChunk = accessoriesTake.items;
+      accessoriesIndex = accessoriesTake.nextIndex;
+      rightRemaining -= accessoriesTake.usedUnits;
+
+      const advantagesTake = takeSimpleListByBudget(
+        advantages,
+        advantagesIndex,
+        Math.max(0, Math.min(2, rightRemaining)),
+        42
+      );
+      advantagesChunk = advantagesTake.items;
+      advantagesIndex = advantagesTake.nextIndex;
+      rightRemaining -= advantagesTake.usedUnits;
 
     } else {
       // Continuación: prioridad técnica.

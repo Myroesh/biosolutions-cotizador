@@ -212,6 +212,27 @@
       grid-template-columns:1fr;
     }
   }
+  .doc-chip-value{
+    font-size:15px;
+    font-weight:800;
+    line-height:1.2;
+  }
+
+  .doc-preview{
+    position:relative;
+  }
+
+  .doc-preview::after{
+    content:"DOCUMENTO";
+    position:absolute;
+    right:18px;
+    bottom:16px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.35em;
+    color:#0a4570;
+    opacity:.9;
+  }
 </style>
 {% endblock %}
 
@@ -302,7 +323,19 @@
   <section class="doc-preview">
     <div class="doc-left"></div>
     <div class="doc-content">
-      <div class="doc-title">Acta de Entrega</div>
+  <div class="doc-brand">
+    <div class="doc-brand-left">
+      <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="doc-logo">
+      <div class="doc-continuation-chip">Documento comercial</div>
+    </div>
+
+    <div class="doc-chip">
+      <span class="doc-chip-label">Documento</span>
+      <span class="doc-chip-value">Acta de entrega</span>
+    </div>
+  </div>
+
+  <div class="doc-title">Acta de Entrega</div>
 
       <div class="doc-meta">
         <strong>Número:</strong> {{ entrega_payload['document']['number'] or '' }}<br>
