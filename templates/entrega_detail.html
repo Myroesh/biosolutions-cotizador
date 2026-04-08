@@ -18,7 +18,12 @@
     padding:18px;
     box-shadow:0 6px 18px rgba(0,0,0,.04);
   }
-
+  .doc-logo{
+  width:64px;
+  max-width:64px;
+  height:auto;
+  display:block;
+}
   .page-card h2{
     margin:0 0 14px;
     color:#0a4570;
@@ -120,14 +125,27 @@
     box-shadow:0 8px 24px rgba(0,0,0,.05);
   }
 
-  .doc-left{
-    position:absolute;
-    left:0;
-    top:0;
-    bottom:0;
-    width:22mm;
-    background:linear-gradient(180deg,#1b6f86 0%, #0a4570 100%);
-  }
+  .doc-left::before,
+.doc-left::after{
+  content:"";
+  position:absolute;
+  left:-8mm;
+  width:40mm;
+  transform:skewY(-36deg);
+  transform-origin:left top;
+}
+
+.doc-left::before{
+  top:82px;
+  height:54mm;
+  background:rgba(17, 181, 220, .22);
+}
+
+.doc-left::after{
+  bottom:65px;
+  height:62mm;
+  background:rgba(255, 170, 0, .26);
+}
 
   .doc-content{
     position:relative;

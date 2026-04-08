@@ -155,34 +155,181 @@
     bottom:0;
     width:22mm;
     background:linear-gradient(180deg,#1b6f86 0%, #0a4570 100%);
+    overflow:hidden;
+  }
+
+  .doc-left::before,
+  .doc-left::after{
+    content:"";
+    position:absolute;
+    left:-8mm;
+    width:40mm;
+    transform:skewY(-36deg);
+    transform-origin:left top;
+  }
+
+  .doc-left::before{
+    top:78px;
+    height:54mm;
+    background:rgba(17,181,220,.24);
+  }
+
+  .doc-left::after{
+    bottom:62px;
+    height:64mm;
+    background:rgba(255,170,0,.28);
   }
 
   .doc-content{
     position:relative;
     z-index:2;
-    padding:18mm 14mm 16mm 32mm;
+    padding:12mm 12mm 14mm 29mm;
     color:#0f172a;
     font-size:13px;
     line-height:1.55;
   }
 
-  .doc-title{
-    text-align:center;
-    font-size:22px;
-    font-weight:800;
-    color:#0a4570;
-    margin-bottom:18px;
-    text-transform:uppercase;
+  .preview-hero{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:16px;
   }
 
-  .doc-meta{
+  .preview-logo{
+    width:66px;
+    max-width:66px;
+    height:auto;
+    display:block;
+  }
+
+  .doc-chip{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:flex-end;
+    justify-content:center;
+    background:#0a5f8f;
+    color:#fff;
+    border-radius:12px;
+    padding:10px 16px;
+    min-width:160px;
+    box-shadow:0 8px 18px rgba(10,69,112,.12);
+  }
+
+  .doc-chip .label{
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    opacity:.85;
+    margin-bottom:4px;
+  }
+
+  .doc-chip .value{
+    font-size:15px;
+    font-weight:800;
+    line-height:1.2;
+  }
+
+  .title-card{
+    background:#f8fafc;
+    border:1px solid #dbe3ea;
+    border-radius:16px;
+    padding:14px 16px;
+    margin-bottom:16px;
+  }
+
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#fff3e8;
+    color:#9a3412;
+    border:1px solid #fed7aa;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+
+  .doc-title{
+    margin:0 0 6px;
+    text-align:left;
+    font-size:24px;
+    font-weight:800;
+    color:#0a4570;
+    text-transform:none;
+  }
+
+  .subtitle{
+    margin:0;
+    color:#475569;
+    font-size:13px;
+    line-height:1.5;
+  }
+
+  .meta-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .meta{
+    background:#eef2f6;
+    border:1px solid #cfd8e3;
+    border-radius:10px;
+    padding:10px 12px;
+    min-height:58px;
+  }
+
+  .meta .k{
+    display:block;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#64748b;
+    margin-bottom:6px;
+  }
+
+  .meta .v{
+    display:block;
+    font-size:13px;
+    font-weight:700;
+    color:#0f172a;
+    line-height:1.35;
+  }
+
+  .card{
+    background:#fff;
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    padding:14px 16px;
     margin-bottom:14px;
+  }
+
+  .section-title{
+    margin:0 0 10px;
+    font-size:15px;
+    font-weight:800;
+    color:#0a4570;
+  }
+
+  .preview-text{
+    margin:0;
+    font-size:13px;
+    line-height:1.65;
+    color:#1e293b;
   }
 
   .doc-table{
     width:100%;
     border-collapse:collapse;
-    margin:16px 0;
+    margin-top:10px;
     font-size:12px;
   }
 
@@ -194,9 +341,49 @@
   }
 
   .doc-table th{
-    background:#eef6fb;
-    color:#0a4570;
+    background:#0b8fb0;
+    color:#fff;
     font-weight:800;
+    text-align:left;
+  }
+
+  .total-box{
+    margin-top:12px;
+    margin-left:auto;
+    width:220px;
+    background:#f8fafc;
+    border:1px solid #cfd8e3;
+    border-radius:14px;
+    padding:12px 14px;
+  }
+
+  .total-box .label{
+    display:block;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#64748b;
+    margin-bottom:6px;
+  }
+
+  .total-box .value{
+    display:block;
+    font-size:18px;
+    font-weight:800;
+    color:#0a4570;
+  }
+
+  .doc-preview::after{
+    content:"DOCUMENTO";
+    position:absolute;
+    right:18px;
+    bottom:16px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.35em;
+    color:#0a4570;
+    opacity:.9;
   }
 
   @media print{
@@ -221,6 +408,10 @@
     .page-grid{
       grid-template-columns:1fr;
     }
+
+    .meta-grid{
+      grid-template-columns:1fr;
+    }
   }
     .doc-brand{
     display:flex;
@@ -237,10 +428,11 @@
   }
 
   .doc-logo{
-    width:84px;
-    height:auto;
-    display:block;
-  }
+  width:64px;
+  max-width:64px;
+  height:auto;
+  display:block;
+}
 
   .doc-continuation-chip{
     display:inline-flex;
@@ -377,8 +569,58 @@
   </section>
 
   <section class="doc-preview">
-    <div class="doc-left"></div>
-    <div class="doc-content">
+  <div class="doc-left"></div>
+  <div class="doc-content">
+    <section class="preview-hero">
+      <div>
+        <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="preview-logo" />
+      </div>
+      <div class="doc-chip">
+        <span class="label">Documento</span>
+        <span class="value">Garantía</span>
+      </div>
+    </section>
+
+    <section class="title-card">
+      <span class="eyebrow">Documento comercial</span>
+      <h1 class="doc-title">Garantía</h1>
+      <p class="subtitle">
+        Número: {{ garantia_payload['document']['number'] or '' }}
+      </p>
+
+      <div class="meta-grid">
+        <div class="meta">
+          <span class="k">Fecha emisión</span>
+          <span class="v">{{ garantia_payload['document']['issueDate'] or '' }}</span>
+        </div>
+        <div class="meta">
+          <span class="k">Fecha vencimiento</span>
+          <span class="v">{{ garantia_payload['document']['expiryDate'] or '' }}</span>
+        </div>
+        <div class="meta">
+          <span class="k">Cliente</span>
+          <span class="v">{{ garantia_payload['document']['client'] or '' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="section-title">Cobertura y condiciones</h3>
+      <p class="preview-text">
+        Se extiende la presente garantía a favor de
+        <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
+        {% if garantia_payload['document']['clientDocument'] %}
+          con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
+        {% endif %}
+        respecto de los siguientes equipos:
+      </p>
+
+      {% if garantia_payload['document']['warrantyText'] %}
+        <p class="preview-text" style="margin-top:12px;">
+          {{ garantia_payload['document']['warrantyText'] }}
+        </p>
+      {% endif %}
+    </section>
   <div class="doc-brand">
     <div class="doc-brand-left">
       <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="doc-logo">
