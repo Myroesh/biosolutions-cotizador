@@ -621,37 +621,8 @@
         </p>
       {% endif %}
     </section>
-  <div class="doc-brand">
-    <div class="doc-brand-left">
-      <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="doc-logo">
-      <div class="doc-continuation-chip">Documento comercial</div>
-    </div>
-
-    <div class="doc-chip">
-      <span class="doc-chip-label">Documento</span>
-      <span class="doc-chip-value">Garantía</span>
-    </div>
-  </div>
-
-  <div class="doc-title">Garantía</div>
-
-      <div class="doc-meta">
-        <strong>Número:</strong> {{ garantia_payload['document']['number'] or '' }}<br>
-        <strong>Fecha emisión:</strong> {{ garantia_payload['document']['issueDate'] or '' }}<br>
-        <strong>Fecha vencimiento:</strong> {{ garantia_payload['document']['expiryDate'] or '' }}
-      </div>
-
-      <p>
-        Se extiende la presente garantía a favor de
-        <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
-        {% if garantia_payload['document']['clientDocument'] %}
-          con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
-        {% endif %}
-        respecto de los siguientes equipos:
-      </p>
-
-      <p>{{ garantia_payload['document']['warrantyText'] or '' }}</p>
-
+      <section class="card">
+      <h3 class="section-title">Equipos cubiertos</h3>
       <table class="doc-table">
         <thead>
           <tr>
@@ -682,13 +653,18 @@
         </tbody>
       </table>
 
-      <p><strong>Total referencial:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
+      <div class="total-box">
+        <span class="label">Total referencial</span>
+        <span class="value">Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</span>
+      </div>
+    </section>
 
-      <p>
+    <section class="card">
+      <h3 class="section-title">Alcance</h3>
+      <p class="preview-text">
         Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
         hasta la fecha de vencimiento indicada en el presente documento.
       </p>
-    </div>
-  </section>
+    </section>
 </div>
 {% endblock %}
