@@ -189,33 +189,10 @@
     line-height:1.55;
   }
 
-  .preview-hero{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:16px;
-    margin-bottom:16px;
-  }
 
-  .preview-logo{
-    width:66px;
-    max-width:66px;
-    height:auto;
-    display:block;
-  }
 
-  .doc-chip{
-      display:inline-flex;
-  flex-direction:column;
-  align-items:flex-end;
-  justify-content:center;
-  background:#0b5d8b;
-  color:#fff;
-  border-radius:12px;
-  padding:10px 16px;
-  min-width:160px;
-  box-shadow:0 8px 18px rgba(11,93,139,.14);
-  }
+ 
+  
 
   .doc-chip .label{
     font-size:10px;
@@ -232,99 +209,24 @@
     line-height:1.2;
   }
 
-  .title-card{
-    background:#f8fafc;
-    border:1px solid #dbe3ea;
-    border-radius:16px;
-    padding:14px 16px;
-    margin-bottom:16px;
-  }
+  
 
-  .eyebrow{
-    display:inline-flex;
-    align-items:center;
-    padding:6px 10px;
-    border-radius:999px;
-    background:#fff3e8;
-    color:#9a3412;
-    border:1px solid #fed7aa;
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:.16em;
-    text-transform:uppercase;
-    margin-bottom:10px;
-  }
+
 
   .doc-title{
     margin:0 0 6px;
     text-align:left;
     font-size:24px;
     font-weight:800;
-    color:#0b4f7d;
+    color:#0b4f7d;  
     text-transform:none;
   }
 
-  .subtitle{
-    margin:0;
-    color:#475569;
-    font-size:13px;
-    line-height:1.5;
-  }
 
-  .meta-grid{
-    display:grid;
-    grid-template-columns:repeat(3, 1fr);
-    gap:10px;
-    margin-top:14px;
-  }
 
-  .meta{
-    background:#eef2f6;
-    border:1px solid #cfd8e3;
-    border-radius:10px;
-    padding:10px 12px;
-    min-height:58px;
-  }
 
-  .meta .k{
-    display:block;
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    color:#64748b;
-    margin-bottom:6px;
-  }
 
-  .meta .v{
-    display:block;
-    font-size:13px;
-    font-weight:700;
-    color:#0f172a;
-    line-height:1.35;
-  }
-
-  .card{
-    background:#fff;
-    border:1px solid #dbe3ea;
-    border-radius:14px;
-    padding:14px 16px;
-    margin-bottom:14px;
-  }
-
-  .section-title{
-    margin:0 0 10px;
-    font-size:15px;
-    font-weight:800;
-    color:#0a4570;
-  }
-
-  .preview-text{
-    margin:0;
-    font-size:13px;
-    line-height:1.65;
-    color:#1e293b;
-  }
+ 
 
   .doc-table{
     width:100%;
@@ -375,7 +277,7 @@
   }
 
   .doc-preview::after{
-    content:"DOCUMENTOSS";
+    content:"DOCUMENTOS";
     position:absolute;
     right:18px;
     bottom:16px;
@@ -571,100 +473,60 @@
   <section class="doc-preview">
   <div class="doc-left"></div>
   <div class="doc-content">
-    <section class="preview-hero">
-      <div>
-        <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="preview-logo" />
-      </div>
-      <div class="doc-chip">
-        <span class="label">Documento</span>
-        <span class="value">Garantía</span>
-      </div>
-    </section>
+    <div class="doc-title">Garantía</div>
 
-    <section class="title-card">
-      <span class="eyebrow">Documento comercial</span>
-      <h1 class="doc-title">Garantía</h1>
-      <p class="subtitle">
-        Número: {{ garantia_payload['document']['number'] or '' }}
-      </p>
+    <div class="doc-meta">
+      <strong>Número:</strong> {{ garantia_payload['document']['number'] or '' }}<br>
+      <strong>Fecha emisión:</strong> {{ garantia_payload['document']['issueDate'] or '' }}<br>
+      <strong>Fecha vencimiento:</strong> {{ garantia_payload['document']['expiryDate'] or '' }}
+    </div>
 
-      <div class="meta-grid">
-        <div class="meta">
-          <span class="k">Fecha emisión</span>
-          <span class="v">{{ garantia_payload['document']['issueDate'] or '' }}</span>
-        </div>
-        <div class="meta">
-          <span class="k">Fecha vencimiento</span>
-          <span class="v">{{ garantia_payload['document']['expiryDate'] or '' }}</span>
-        </div>
-        <div class="meta">
-          <span class="k">Cliente</span>
-          <span class="v">{{ garantia_payload['document']['client'] or '' }}</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h3 class="section-title">Cobertura y condiciones</h3>
-      <p class="preview-text">
-        Se extiende la presente garantía a favor de
-        <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
-        {% if garantia_payload['document']['clientDocument'] %}
-          con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
-        {% endif %}
-        respecto de los siguientes equipos:
-      </p>
-
-      {% if garantia_payload['document']['warrantyText'] %}
-        <p class="preview-text" style="margin-top:12px;">
-          {{ garantia_payload['document']['warrantyText'] }}
-        </p>
+    <p>
+      Se extiende la presente garantía a favor de
+      <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
+      {% if garantia_payload['document']['clientDocument'] %}
+        con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
       {% endif %}
-    </section>
-      <section class="card">
-      <h3 class="section-title">Equipos cubiertos</h3>
-      <table class="doc-table">
-        <thead>
+      respecto de los siguientes equipos:
+    </p>
+
+    <p>{{ garantia_payload['document']['warrantyText'] or '' }}</p>
+
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Equipo</th>
+          <th>Marca / Modelo</th>
+          <th>Cant.</th>
+          <th>Seriales</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in garantia_payload['items'] %}
           <tr>
-            <th>#</th>
-            <th>Equipo</th>
-            <th>Marca / Modelo</th>
-            <th>Cant.</th>
-            <th>Seriales</th>
+            <td>{{ loop.index }}</td>
+            <td>{{ item['title'] or '' }}</td>
+            <td>
+              {% if item['brand'] %}{{ item['brand'] }}{% endif %}
+              {% if item['model'] %} / {{ item['model'] }}{% endif %}
+            </td>
+            <td>{{ item['quantity'] or 1 }}</td>
+            <td>
+              {% for serial in item['serials'] %}
+                {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {% for item in garantia_payload['items'] %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ item['title'] or '' }}</td>
-              <td>
-                {% if item['brand'] %}{{ item['brand'] }}{% endif %}
-                {% if item['model'] %} / {{ item['model'] }}{% endif %}
-              </td>
-              <td>{{ item['quantity'] or 1 }}</td>
-              <td>
-                {% for serial in item['serials'] %}
-                  {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
-                {% endfor %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+        {% endfor %}
+      </tbody>
+    </table>
 
-      <div class="total-box">
-        <span class="label">Total referencial</span>
-        <span class="value">Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</span>
-      </div>
-    </section>
+    <p><strong>Total referencial:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
 
-    <section class="card">
-      <h3 class="section-title">Alcance</h3>
-      <p class="preview-text">
-        Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
-        hasta la fecha de vencimiento indicada en el presente documento.
-      </p>
-    </section>
+    <p>
+      Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
+      hasta la fecha de vencimiento indicada en el presente documento.
+    </p>
 </div>
 {% endblock %}
