@@ -48,7 +48,10 @@
     box-sizing:border-box;
     background:#fff;
   }
-
+  .warranty-text{
+  font-size:12px;
+  line-height:1.5;
+}
   .field textarea{
     min-height:120px;
     resize:vertical;
@@ -149,89 +152,63 @@
   }
 
   .doc-left{
-  position:absolute;
-  left:0;
-  top:0;
-  bottom:0;
-  width:22mm;
-  background:linear-gradient(180deg,#0b4f7d 0%, #0a5f8f 52%, #f28c28 100%);
-  overflow:hidden;
-}
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:22mm;
+    background:linear-gradient(180deg,#0b4f7d 0%, #0a5f8f 52%, #f28c28 100%);
+    overflow:hidden;
+  }
 
-.doc-left::before,
-.doc-left::after{
-  content:"";
-  position:absolute;
-  left:-8mm;
-  width:40mm;
-  transform:skewY(-36deg);
-  transform-origin:left top;
-}
+  .doc-left::before,
+  .doc-left::after{
+    content:"";
+    position:absolute;
+    left:-8mm;
+    width:40mm;
+    transform:skewY(-36deg);
+    transform-origin:left top;
+  }
 
-.doc-left::before{
-  top:78px;
-  height:54mm;
-  background:rgba(38, 187, 216, .30);
-}
+  .doc-left::before{
+    top:78px;
+    height:54mm;
+    background:rgba(38, 187, 216, .30);
+  }
 
-.doc-left::after{
-  bottom:62px;
-  height:64mm;
-  background:rgba(255, 183, 77, .34);
-}
+  .doc-left::after{
+    bottom:62px;
+    height:64mm;
+    background:rgba(255, 183, 77, .34);
+  }
 
   .doc-content{
     position:relative;
     z-index:2;
-    padding:12mm 12mm 14mm 29mm;
+    padding:18mm 14mm 16mm 32mm;
     color:#0f172a;
     font-size:13px;
     line-height:1.55;
   }
 
-
-
- 
-  
-
-  .doc-chip .label{
-    font-size:10px;
-    font-weight:700;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    opacity:.85;
-    margin-bottom:4px;
-  }
-
-  .doc-chip .value{
-    font-size:15px;
-    font-weight:800;
-    line-height:1.2;
-  }
-
-  
-
-
-
   .doc-title{
-    margin:0 0 6px;
-    text-align:left;
-    font-size:24px;
+    text-align:center;
+    font-size:22px;
     font-weight:800;
-    color:#0b4f7d;  
-    text-transform:none;
+    color:#0b4f7d;
+    margin-bottom:18px;
+    text-transform:uppercase;
   }
 
-
-
-
-
- 
+  .doc-meta{
+    margin-bottom:14px;
+  }
 
   .doc-table{
     width:100%;
     border-collapse:collapse;
-    margin-top:10px;
+    margin:16px 0;
     font-size:12px;
   }
 
@@ -244,40 +221,13 @@
 
   .doc-table th{
     background:#1187a8;
-  color:#fff;
-  font-weight:800;
-  text-align:left;
-  }
-
-  .total-box{
-    margin-top:12px;
-    margin-left:auto;
-    width:220px;
-    background:#f8fafc;
-    border:1px solid #cfd8e3;
-    border-radius:14px;
-    padding:12px 14px;
-  }
-
-  .total-box .label{
-    display:block;
-    font-size:10px;
+    color:#fff;
     font-weight:800;
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    color:#64748b;
-    margin-bottom:6px;
-  }
-
-  .total-box .value{
-    display:block;
-    font-size:18px;
-    font-weight:800;
-    color:#0a4570;
+    text-align:left;
   }
 
   .doc-preview::after{
-    content:"DOCUMENTOS";
+    content:"DOCUMENTO";
     position:absolute;
     right:18px;
     bottom:16px;
@@ -310,88 +260,6 @@
     .page-grid{
       grid-template-columns:1fr;
     }
-
-    .meta-grid{
-      grid-template-columns:1fr;
-    }
-  }
-    .doc-brand{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:16px;
-    margin-bottom:18px;
-  }
-
-  .doc-brand-left{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-  }
-
-  .doc-logo{
-  width:64px;
-  max-width:64px;
-  height:auto;
-  display:block;
-}
-
-  .doc-continuation-chip{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:6px 10px;
-    border-radius:999px;
-    background:#eef6fb;
-    color:#0a4570;
-    font-size:11px;
-    font-weight:800;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-  }
-
-  .doc-chip{
-    display:inline-flex;
-    flex-direction:column;
-    align-items:flex-end;
-    justify-content:center;
-     background:#0b5d8b;
-    color:#fff;
-    border-radius:12px;
-    padding:10px 16px;
-    min-width:150px;
-    box-shadow:0 8px 18px rgba(10,69,112,.12);
-  }
-
-  .doc-chip-label{
-    font-size:10px;
-    font-weight:700;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    opacity:.85;
-    margin-bottom:4px;
-  }
-
-  .doc-chip-value{
-    font-size:15px;
-    font-weight:800;
-    line-height:1.2;
-  }
-
-  .doc-preview{
-    position:relative;
-  }
-
-  .doc-preview::after{
-    content:"DOCUMENTO";
-    position:absolute;
-    right:18px;
-    bottom:16px;
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:.35em;
-    color:#0a4570;
-    opacity:.9;
   }
 </style>
 {% endblock %}
@@ -471,62 +339,63 @@
   </section>
 
   <section class="doc-preview">
-  <div class="doc-left"></div>
-  <div class="doc-content">
-    <div class="doc-title">Garantía</div>
+    <div class="doc-left"></div>
+    <div class="doc-content">
+      <div class="doc-title">Garantía</div>
 
-    <div class="doc-meta">
-      <strong>Número:</strong> {{ garantia_payload['document']['number'] or '' }}<br>
-      <strong>Fecha emisión:</strong> {{ garantia_payload['document']['issueDate'] or '' }}<br>
-      <strong>Fecha vencimiento:</strong> {{ garantia_payload['document']['expiryDate'] or '' }}
-    </div>
+      <div class="doc-meta">
+        <strong>Número:</strong> {{ garantia_payload['document']['number'] or '' }}<br>
+        <strong>Fecha emisión:</strong> {{ garantia_payload['document']['issueDate'] or '' }}<br>
+        <strong>Fecha vencimiento:</strong> {{ garantia_payload['document']['expiryDate'] or '' }}
+      </div>
 
-    <p>
-      Se extiende la presente garantía a favor de
-      <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
-      {% if garantia_payload['document']['clientDocument'] %}
-        con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
-      {% endif %}
-      respecto de los siguientes equipos:
-    </p>
+      <p>
+        Se extiende la presente garantía a favor de
+        <strong>{{ garantia_payload['document']['client'] or '' }}</strong>
+        {% if garantia_payload['document']['clientDocument'] %}
+          con documento <strong>{{ garantia_payload['document']['clientDocument'] }}</strong>
+        {% endif %}
+        respecto de los siguientes equipos:
+      </p>
 
-    <p>{{ garantia_payload['document']['warrantyText'] or '' }}</p>
-
-    <table class="doc-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Equipo</th>
-          <th>Marca / Modelo</th>
-          <th>Cant.</th>
-          <th>Seriales</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in garantia_payload['items'] %}
+      <p class="warranty-text">{{ garantia_payload['document']['warrantyText'] or '' }}</p>
+      <table class="doc-table">
+        <thead>
           <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ item['title'] or '' }}</td>
-            <td>
-              {% if item['brand'] %}{{ item['brand'] }}{% endif %}
-              {% if item['model'] %} / {{ item['model'] }}{% endif %}
-            </td>
-            <td>{{ item['quantity'] or 1 }}</td>
-            <td>
-              {% for serial in item['serials'] %}
-                {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
-              {% endfor %}
-            </td>
+            <th>#</th>
+            <th>Equipo</th>
+            <th>Marca / Modelo</th>
+            <th>Cant.</th>
+            <th>Seriales</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for item in garantia_payload['items'] %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item['title'] or '' }}</td>
+              <td>
+                {% if item['brand'] %}{{ item['brand'] }}{% endif %}
+                {% if item['model'] %} / {{ item['model'] }}{% endif %}
+              </td>
+              <td>{{ item['quantity'] or 1 }}</td>
+              <td>
+                {% for serial in item['serials'] %}
+                  {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
 
-    <p><strong>Total referencial:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
+      <p><strong>Total referencial:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
 
-    <p>
-      Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
-      hasta la fecha de vencimiento indicada en el presente documento.
-    </p>
+      <p>
+        Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
+        hasta la fecha de vencimiento indicada en el presente documento.
+      </p>
+    </div>
+  </section>
 </div>
 {% endblock %}

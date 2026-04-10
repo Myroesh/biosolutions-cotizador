@@ -18,12 +18,7 @@
     padding:18px;
     box-shadow:0 6px 18px rgba(0,0,0,.04);
   }
-  .doc-logo{
-  width:64px;
-  max-width:64px;
-  height:auto;
-  display:block;
-}
+
   .page-card h2{
     margin:0 0 14px;
     color:#0a4570;
@@ -125,27 +120,37 @@
     box-shadow:0 8px 24px rgba(0,0,0,.05);
   }
 
+  .doc-left{
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:22mm;
+    background:linear-gradient(180deg,#0b4f7d 0%, #0a5f8f 52%, #f28c28 100%);
+    overflow:hidden;
+  }
+
   .doc-left::before,
-.doc-left::after{
-  content:"";
-  position:absolute;
-  left:-8mm;
-  width:40mm;
-  transform:skewY(-36deg);
-  transform-origin:left top;
-}
+  .doc-left::after{
+    content:"";
+    position:absolute;
+    left:-8mm;
+    width:40mm;
+    transform:skewY(-36deg);
+    transform-origin:left top;
+  }
 
-.doc-left::before{
-  top:82px;
-  height:54mm;
-  background:rgba(17, 181, 220, .22);
-}
+  .doc-left::before{
+    top:78px;
+    height:54mm;
+    background:rgba(38, 187, 216, .30);
+  }
 
-.doc-left::after{
-  bottom:65px;
-  height:62mm;
-  background:rgba(255, 170, 0, .26);
-}
+  .doc-left::after{
+    bottom:62px;
+    height:64mm;
+    background:rgba(255, 183, 77, .34);
+  }
 
   .doc-content{
     position:relative;
@@ -160,7 +165,7 @@
     text-align:center;
     font-size:22px;
     font-weight:800;
-    color:#0a4570;
+    color:#0b4f7d;
     margin-bottom:18px;
     text-transform:uppercase;
   }
@@ -184,9 +189,10 @@
   }
 
   .doc-table th{
-    background:#eef6fb;
-    color:#0a4570;
+    background:#1187a8;
+    color:#fff;
     font-weight:800;
+    text-align:left;
   }
 
   .doc-sign{
@@ -205,6 +211,18 @@
     border-top:1px solid #64748b;
     margin-bottom:8px;
     height:1px;
+  }
+
+  .doc-preview::after{
+    content:"DOCUMENTO";
+    position:absolute;
+    right:18px;
+    bottom:16px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.35em;
+    color:#0a4570;
+    opacity:.9;
   }
 
   @media print{
@@ -229,27 +247,6 @@
     .page-grid{
       grid-template-columns:1fr;
     }
-  }
-  .doc-chip-value{
-    font-size:15px;
-    font-weight:800;
-    line-height:1.2;
-  }
-
-  .doc-preview{
-    position:relative;
-  }
-
-  .doc-preview::after{
-    content:"DOCUMENTO";
-    position:absolute;
-    right:18px;
-    bottom:16px;
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:.35em;
-    color:#0a4570;
-    opacity:.9;
   }
 </style>
 {% endblock %}
@@ -341,19 +338,7 @@
   <section class="doc-preview">
     <div class="doc-left"></div>
     <div class="doc-content">
-  <div class="doc-brand">
-    <div class="doc-brand-left">
-      <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="doc-logo">
-      <div class="doc-continuation-chip">Documento comercial</div>
-    </div>
-
-    <div class="doc-chip">
-      <span class="doc-chip-label">Documento</span>
-      <span class="doc-chip-value">Acta de entrega</span>
-    </div>
-  </div>
-
-  <div class="doc-title">Acta de Entrega</div>
+      <div class="doc-title">Acta de Entrega</div>
 
       <div class="doc-meta">
         <strong>Número:</strong> {{ entrega_payload['document']['number'] or '' }}<br>
