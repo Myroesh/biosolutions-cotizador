@@ -1092,13 +1092,13 @@ def cotizador():
             "equipo_nombre": p["equipo_nombre"] or "",
             "equipo_marca": p["equipo_marca"] or "",
             "equipo_modelo": p["equipo_modelo"] or "",
+            "equipo_origen": p["equipo_origen"] or "",
+            "equipo_garantia_base": p["equipo_garantia_base"] or "",
             "descripcion_breve": p["descripcion_breve"] or "",
             "descripcion_larga": p["descripcion_larga"] or "",
             "imagen": normalize_image_path_for_db(p["imagen"] or ""),
             "imagen_url": build_public_image_url(p["imagen"] or ""),
             "precio_base": p["precio_base"] or 0,
-            "equipo_origen": p["origen"] or "",
-            "equipo_garantia_base": p["garantia_base"] or "",
             "mostrar_precio_por_defecto": p["mostrar_precio_por_defecto"] or 0,
             "especificaciones": [
                 {
