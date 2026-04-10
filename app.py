@@ -345,24 +345,13 @@ def build_initial_template_data_from_equipo(equipo_row):
             "nombre_comercial": "",
             "descripcion_breve": "",
             "descripcion_larga": "",
-            "imagen": ""
+            "imagen": "",
+            "origen": "",
+            "garantia_base": ""
         }
 
     descripcion_breve = (equipo_row["descripcion_breve"] or "").strip()
     descripcion_larga = (equipo_row["descripcion_larga"] or "").strip()
-
-    extras = []
-    if (equipo_row["origen"] or "").strip():
-        extras.append(f"Origen: {equipo_row['origen'].strip()}")
-    if (equipo_row["garantia_base"] or "").strip():
-        extras.append(f"Garantía base: {equipo_row['garantia_base'].strip()}")
-
-    if extras:
-        extras_text = "\n".join(extras)
-        if descripcion_larga:
-            descripcion_larga = f"{descripcion_larga}\n\n{extras_text}"
-        else:
-            descripcion_larga = extras_text
 
     nombre_comercial_base = " ".join(
         part for part in [
@@ -377,9 +366,10 @@ def build_initial_template_data_from_equipo(equipo_row):
         "nombre_comercial": nombre_comercial_base,
         "descripcion_breve": descripcion_breve,
         "descripcion_larga": descripcion_larga,
-        "imagen": (equipo_row["imagen"] or "").strip()
+        "imagen": (equipo_row["imagen"] or "").strip(),
+        "origen": (equipo_row["origen"] or "").strip(),
+        "garantia_base": (equipo_row["garantia_base"] or "").strip()
     }
-
 
 def get_plantilla_children(conn, plantilla_id):
     especificaciones = conn.execute("""
@@ -1078,7 +1068,13 @@ def cotizador():
     ensure_auth_schema(conn)
 
     plantillas = conn.execute("""
-        SELECT p.*, e.nombre AS equipo_nombre, e.marca AS equipo_marca, e.modelo AS equipo_modelo
+        SELECT
+            p.*,
+            e.nombre AS equipo_nombre,
+            e.marca AS equipo_marca,
+            e.modelo AS equipo_modelo,
+            e.origen AS equipo_origen,
+            e.garantia_base AS equipo_garantia_base
         FROM plantillas p
         LEFT JOIN equipos e ON e.id = p.equipo_id
         WHERE p.activo = 1
@@ -1101,6 +1097,8 @@ def cotizador():
             "imagen": normalize_image_path_for_db(p["imagen"] or ""),
             "imagen_url": build_public_image_url(p["imagen"] or ""),
             "precio_base": p["precio_base"] or 0,
+            "equipo_origen": p["origen"] or "",
+            "equipo_garantia_base": p["garantia_base"] or "",
             "mostrar_precio_por_defecto": p["mostrar_precio_por_defecto"] or 0,
             "especificaciones": [
                 {
