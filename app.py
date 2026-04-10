@@ -45,7 +45,11 @@ def normalize_image_path_for_db(image_value):
 
     return image_value
 
-
+def build_public_image_url(image_value):
+    image_value = normalize_image_path_for_db(image_value)
+    if not image_value:
+        return ""
+    return f"/static/{image_value}"
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
@@ -1094,7 +1098,8 @@ def cotizador():
             "equipo_modelo": p["equipo_modelo"] or "",
             "descripcion_breve": p["descripcion_breve"] or "",
             "descripcion_larga": p["descripcion_larga"] or "",
-            "imagen": p["imagen"] or "",
+            "imagen": normalize_image_path_for_db(p["imagen"] or ""),
+            "imagen_url": build_public_image_url(p["imagen"] or ""),
             "precio_base": p["precio_base"] or 0,
             "mostrar_precio_por_defecto": p["mostrar_precio_por_defecto"] or 0,
             "especificaciones": [
@@ -1181,7 +1186,7 @@ def crear_equipo():
     garantia_base = request.form.get("garantia_base", "").strip()
     descripcion_breve = request.form.get("descripcion_breve", "").strip()
     descripcion_larga = request.form.get("descripcion_larga", "").strip()
-    imagen = request.form.get("imagen", "").strip()
+    imagen = normalize_image_path_for_db(request.form.get("imagen", "").strip())
 
     if not nombre:
         return redirect(url_for("equipos_page"))
@@ -1295,6 +1300,8 @@ def plantillas_page():
         children = get_plantilla_children(conn, p["id"])
 
         plantilla_dict = dict(p)
+        plantilla_dict["imagen"] = normalize_image_path_for_db(plantilla_dict.get("imagen") or "")
+        plantilla_dict["imagen_url"] = build_public_image_url(plantilla_dict.get("imagen") or "")
         plantilla_dict["especificaciones"] = [dict(x) for x in children["especificaciones"]]
         plantilla_dict["usos"] = [dict(x) for x in children["usos"]]
         plantilla_dict["accesorios"] = [dict(x) for x in children["accesorios"]]
@@ -1349,7 +1356,7 @@ def crear_plantilla():
     nombre_comercial = request.form.get("nombre_comercial", "").strip()
     descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
     descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
-    imagen = request.form.get("plantilla_imagen", "").strip()
+    imagen = normalize_image_path_for_db(request.form.get("plantilla_imagen", "").strip())
     precio_base = request.form.get("precio_base", "").strip()
     mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
 
@@ -1399,7 +1406,7 @@ def crear_plantilla():
 
         if not imagen:
             imagen = snapshot["imagen"]
-
+    imagen = normalize_image_path_for_db(imagen)
     conn.execute("""
         INSERT INTO plantillas (
             equipo_id,
@@ -1436,7 +1443,7 @@ def editar_plantilla(plantilla_id):
     nombre_comercial = request.form.get("nombre_comercial", "").strip()
     descripcion_breve = request.form.get("plantilla_descripcion_breve", "").strip()
     descripcion_larga = request.form.get("plantilla_descripcion_larga", "").strip()
-    imagen = request.form.get("plantilla_imagen", "").strip()
+    imagen = normalize_image_path_for_db(request.form.get("plantilla_imagen", "").strip())
     precio_base = request.form.get("precio_base", "").strip()
     mostrar_precio = 1 if request.form.get("mostrar_precio_por_defecto") == "on" else 0
 

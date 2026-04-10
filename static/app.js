@@ -61,7 +61,19 @@ function normalizeTemplateTextList(rows) {
     .map(text => String(text || "").trim())
     .filter(Boolean);
 }
+function resolveTemplateImageSrc(template) {
+  const rawUrl = String(template?.imagen_url || "").trim();
+  if (rawUrl) return rawUrl;
 
+  const rawImage = String(template?.imagen || "").trim();
+  if (!rawImage) return "";
+
+  if (rawImage.startsWith("/static/")) return rawImage;
+  if (rawImage.startsWith("static/")) return `/${rawImage}`;
+  if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) return rawImage;
+
+  return `/static/${rawImage}`;
+}
 function createItemFromTemplate(template) {
   return {
     id: generateId(),
@@ -82,7 +94,7 @@ function createItemFromTemplate(template) {
     uses: normalizeTemplateTextList(template.usos),
     accessories: normalizeTemplateTextList(template.accesorios),
     advantages: normalizeTemplateTextList(template.ventajas),
-    imageSrc: template.imagen ? `/static/${template.imagen}` : ""
+    imageSrc: resolveTemplateImageSrc(template)
   };
 }
 
