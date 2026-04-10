@@ -7,8 +7,8 @@ const appState = {
     attention: "",
     city: "",
     validity: "15 días",
-    paymentTerms: "",
-    notes: ""
+    paymentTerms: "Efectivo al contado",
+    notes: "N/A"
   },
   items: [],
   selectedItemId: null
@@ -82,8 +82,8 @@ function createItemFromTemplate(template) {
     title: template.nombre_comercial || template.nombre_plantilla || template.equipo_nombre || "Nuevo equipo",
     brand: template.equipo_marca || "",
     model: template.equipo_modelo || "",
-    origin: "",
-    warranty: "",
+    origin: template.equipo_origen || "",
+    warranty: template.equipo_garantia_base || "",  
     price: template.precio_base ? String(template.precio_base) : "",
     quantity: "1",
     showPrice: !!template.mostrar_precio_por_defecto,
@@ -156,8 +156,8 @@ function resetQuotation() {
     attention: "",
     city: "",
     validity: "15 días",
-    paymentTerms: "",
-    notes: ""
+    paymentTerms: "Efectivo al contado",
+    notes: "N/A"
   };
   appState.items = [];
   appState.selectedItemId = null;
@@ -182,7 +182,6 @@ function nl2br(text) {
 
 function bindQuotationFields() {
   const mappings = {
-    qNumber: "number",
     qDate: "date",
     qClient: "client",
     qAttention: "attention",
