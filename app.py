@@ -1558,7 +1558,10 @@ def cotizaciones_page():
     conn = get_db_connection()
     ensure_auth_schema(conn)
 
-    cotizaciones = conn.execute("""
+    q = (request.args.get("q") or "").strip()
+    q_like = f"%{q}%"
+
+    base_query = """
         SELECT
             c.*,
             uc.username AS creado_por_username,
@@ -1590,12 +1593,38 @@ def cotizaciones_page():
         FROM cotizaciones c
         LEFT JOIN usuarios uc ON uc.id = c.creado_por_user_id
         LEFT JOIN usuarios ua ON ua.id = c.actualizado_por_user_id
-        ORDER BY c.id DESC
-    """).fetchall()
+    """
+
+    if q:
+        cotizaciones = conn.execute(base_query + """
+            WHERE
+                c.numero LIKE ?
+                OR c.cliente LIKE ?
+                OR c.ciudad LIKE ?
+                OR EXISTS (
+                    SELECT 1
+                    FROM cotizacion_items ci
+                    WHERE ci.cotizacion_id = c.id
+                      AND (
+                          ci.nombre_editado LIKE ?
+                          OR ci.marca_editada LIKE ?
+                          OR ci.modelo_editado LIKE ?
+                      )
+                )
+            ORDER BY c.id DESC
+        """, (q_like, q_like, q_like, q_like, q_like, q_like)).fetchall()
+    else:
+        cotizaciones = conn.execute(base_query + """
+            ORDER BY c.id DESC
+        """).fetchall()
 
     conn.close()
-    return render_template("cotizaciones.html", cotizaciones=cotizaciones, active_page="cotizaciones")
-
+    return render_template(
+        "cotizaciones.html",
+        cotizaciones=cotizaciones,
+        active_page="cotizaciones",
+        search_query=q
+    )
 
 @app.route("/cotizaciones/<int:cotizacion_id>/json")
 @login_required

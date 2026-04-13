@@ -104,10 +104,89 @@
   .inline-form{
     display:inline;
   }
-  .tiny-note{
+    .tiny-note{
     font-size:12px;
     color:#64748b;
     line-height:1.6;
+  }
+
+  .search-bar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:end;
+    margin-bottom:18px;
+    padding:14px;
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    background:#f8fafc;
+  }
+
+  .search-bar .field{
+    flex:1 1 320px;
+    margin:0;
+  }
+
+  .search-bar input{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .search-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .empty-search-note{
+    margin-bottom:14px;
+    font-size:13px;
+    color:#64748b;
+  }
+    .search-bar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:end;
+    margin-bottom:18px;
+    padding:14px;
+    border:1px solid #dbe3ea;
+    border-radius:14px;
+    background:#f8fafc;
+  }
+
+  .search-bar .field{
+    flex:1 1 320px;
+    margin:0;
+  }
+
+  .search-bar input{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .search-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .empty-search-note{
+    margin-bottom:14px;
+    font-size:13px;
+    color:#64748b;
   }
 </style>
 {% endblock %}
@@ -116,6 +195,25 @@
 <section class="page-card">
   <h2>Cotizaciones guardadas</h2>
 
+  <form method="get" action="{{ url_for('cotizaciones_page') }}" class="search-bar">
+    <div class="field">
+      <label for="q">Buscar</label>
+      <input
+        id="q"
+        name="q"
+        type="text"
+        value="{{ search_query or '' }}"
+        placeholder="Cliente, número, equipo, marca o modelo"
+      />
+    </div>
+
+    <div class="search-actions">
+      <button type="submit" class="secondary-btn">Buscar</button>
+      {% if search_query %}
+        <a href="{{ url_for('cotizaciones_page') }}" class="secondary-btn" style="text-decoration:none; display:inline-flex; align-items:center;">Limpiar</a>
+      {% endif %}
+    </div>
+  </form>
   {% if cotizaciones %}
     <div class="lib-list">
       {% for c in cotizaciones %}
@@ -198,8 +296,20 @@
         </div>
       {% endfor %}
     </div>
-  {% else %}
-    <p class="tiny-note">Todavía no hay cotizaciones guardadas en la base.</p>
+ {% else %}
+    {% if search_query %}
+      <p class="empty-search-note">
+        No se encontraron cotizaciones para: <strong>{{ search_query }}</strong>
+      </p>
+     {% else %}
+    {% if search_query %}
+      <p class="empty-search-note">
+        No se encontraron cotizaciones para: <strong>{{ search_query }}</strong>
+      </p>
+    {% else %}
+      <p class="tiny-note">Todavía no hay cotizaciones guardadas en la base de datos.</p>
+    {% endif %}
+  {% endif %}
   {% endif %}
 </section>
 {% endblock %}
