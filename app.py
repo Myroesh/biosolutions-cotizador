@@ -651,7 +651,7 @@ def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
             "expiryDate": expiry_date,
             "client": cliente,
             "clientDocument": "",
-              ""warrantyText": """La garantía no cubre ninguna forma daños al equipo por: caídas, golpes, mal uso del mismo, daños por agua o humedad, ni ningún tipo de daño intencional o producto de la negligencia o impericia del cliente, se recomienda leer el manual cuidadosamente antes del uso
+              "warrantyText": """La garantía no cubre ninguna forma daños al equipo por: caídas, golpes, mal uso del mismo, daños por agua o humedad, ni ningún tipo de daño intencional o producto de la negligencia o impericia del cliente, se recomienda leer el manual cuidadosamente antes del uso
 * En caso de mal funcionamiento del equipo la garantía no implica necesariamente la devolución del dinero, sino que la empresa se compromete a reparar el equipo, siendo responsabilidad del cliente el llevarlo a dependencias de la empresa. O de no ser posible la reparación la entrega de un equipo del mismo modelo o calidad similar en el plazo máximo de 30 días hábiles si es que fuera necesaria la importación de este. Guardándose la empresa la posibilidad de devolver el dinero si es que viera esto como más conveniente
 * La garantía solo cubre mal funcionamiento del equipo. No equipos cuyo funcionamiento o características no estén de acuerdo al gusto del cliente, ya que se entiende que el cliente compra los equipos en el estado en el que se le ofrecen no pudiendo reclamar después por estos."""
         },
@@ -2235,8 +2235,7 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
 # Garantías
 # =========================
 
-@app.route("/garantias")
-@login_required
+
 @app.route("/garantias")
 @login_required
 def garantias_page():
@@ -2266,6 +2265,7 @@ def garantias_page():
 
     conn.close()
     return render_template("garantias.html", garantias=garantias, active_page="garantias")
+
 @app.route("/garantias/<int:garantia_id>")
 @login_required
 def garantia_detail_page(garantia_id):
