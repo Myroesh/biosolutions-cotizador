@@ -94,6 +94,51 @@
     font-size:13px;
     font-weight:700;
   }
+
+  .danger-btn{
+    background:#dc2626;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .delete-form{
+    margin-top:10px;
+    padding:12px;
+    border:1px solid #fecaca;
+    background:#fef2f2;
+    border-radius:12px;
+  }
+
+  .delete-form label{
+    display:block;
+    font-size:12px;
+    font-weight:700;
+    color:#991b1b;
+    margin-bottom:6px;
+  }
+
+  .delete-form input{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #fca5a5;
+    border-radius:10px;
+    font-size:14px;
+    box-sizing:border-box;
+    margin-bottom:8px;
+  }
+
+  .delete-note{
+    display:block;
+    font-size:12px;
+    color:#7f1d1d;
+    line-height:1.5;
+    margin-bottom:8px;
+  }
 </style>
 {% endblock %}
 
@@ -136,6 +181,26 @@
           <div class="actions">
             <a href="{{ url_for('garantia_detail_page', garantia_id=g['id']) }}">Abrir / editar</a>
           </div>
+
+          {% if current_role == 'admin' %}
+            <form method="post"
+                  action="{{ url_for('eliminar_garantia', garantia_id=g['id']) }}"
+                  class="delete-form"
+                  onsubmit="return confirm('¿Seguro que deseas eliminar lógicamente esta garantía?');">
+              <label for="password_confirm_{{ g['id'] }}">Confirmar contraseña de administrador</label>
+              <input
+                id="password_confirm_{{ g['id'] }}"
+                name="password_confirm"
+                type="password"
+                placeholder="Ingresa tu contraseña"
+                required
+              />
+              <span class="delete-note">
+                Esta acción hará que la garantía deje de aparecer en el sistema, pero no se eliminará físicamente de la base de datos.
+              </span>
+              <button type="submit" class="danger-btn">Eliminar garantía</button>
+            </form>
+          {% endif %}
         </div>
       {% endfor %}
     </div>

@@ -147,14 +147,21 @@ def ensure_garantias_table(conn):
             texto_garantia TEXT,
             total REAL DEFAULT 0,
             payload_json TEXT,
+            activo INTEGER NOT NULL DEFAULT 1,
             creado_por_user_id INTEGER,
             actualizado_por_user_id INTEGER,
             creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
             actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    conn.commit()
 
+    columns = conn.execute("PRAGMA table_info(garantias)").fetchall()
+    column_names = [col["name"] for col in columns]
+
+    if "activo" not in column_names:
+        conn.execute("ALTER TABLE garantias ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+
+    conn.commit()
 
 def ensure_documentos_schema(conn):
     ensure_payload_json_column(conn)
@@ -644,7 +651,9 @@ def build_initial_garantia_payload(cot_row, cot_payload, numero_garantia):
             "expiryDate": expiry_date,
             "client": cliente,
             "clientDocument": "",
-            "warrantyText": "BioSolutions otorga garantía de 1 año a partir de la fecha de compra contra defectos de fábrica o mal funcionamiento, siempre que el equipo haya sido utilizado correctamente y no presente daños por manipulación inadecuada, golpes, humedad, sobrecarga eléctrica o intervenciones no autorizadas."
+              "warrantyText": """La garantía no cubre ninguna forma daños al equipo por: caídas, golpes, mal uso del mismo, daños por agua o humedad, ni ningún tipo de daño intencional o producto de la negligencia o impericia del cliente, se recomienda leer el manual cuidadosamente antes del uso
+                * En caso de mal funcionamiento del equipo la garantía no implica necesariamente la devolución del dinero, sino que la empresa se compromete a reparar el equipo, siendo responsabilidad del cliente el llevarlo a dependencias de la empresa. O de no ser posible la reparación la entrega de un equipo del mismo modelo o calidad similar en el plazo máximo de 30 días hábiles si es que fuera necesaria la importación de este. Guardándose la empresa la posibilidad de devolver el dinero si es que viera esto como más conveniente
+                * La garantía solo cubre mal funcionamiento del equipo. No equipos cuyo funcionamiento o características no estén de acuerdo al gusto del cliente, ya que se entiende que el cliente compra los equipos en el estado en el que se le ofrecen no pudiendo reclamar después por estos."""
         },
         "items": garantia_items,
         "totals": {
@@ -716,14 +725,15 @@ def load_entrega_payload(conn, entrega_id):
 # =========================
 
 def load_garantia_payload(conn, garantia_id):
-    row = conn.execute("""
+     row = conn.execute("""
         SELECT *
         FROM garantias
         WHERE id = ?
+          AND activo = 1
     """, (garantia_id,)).fetchone()
 
     if not row:
-        return None, None
+    return None, None
 
     payload_json = (row["payload_json"] or "").strip()
     payload = None
@@ -804,6 +814,7 @@ def sync_entrega_serials_to_garantia(conn, cotizacion_id, source_entrega_payload
         SELECT id
         FROM garantias
         WHERE cotizacion_id = ?
+          AND activo = 1
         ORDER BY id DESC
         LIMIT 1
     """, (cotizacion_id,)).fetchone()
@@ -2230,7 +2241,7 @@ def garantias_page():
     conn = get_db_connection()
     ensure_auth_schema(conn)
 
-    garantias_rows = conn.execute("""
+     garantias_rows = conn.execute("""
         SELECT
             g.*,
             c.numero AS cotizacion_numero,
@@ -2240,6 +2251,7 @@ def garantias_page():
         LEFT JOIN cotizaciones c ON c.id = g.cotizacion_id
         LEFT JOIN usuarios uc ON uc.id = g.creado_por_user_id
         LEFT JOIN usuarios ua ON ua.id = g.actualizado_por_user_id
+        WHERE g.activo = 1
         ORDER BY g.id DESC
     """).fetchall()
 
@@ -2369,6 +2381,62 @@ def guardar_garantia(garantia_id):
     flash("Garantía actualizada correctamente.", "success")
     return redirect(url_for("garantia_detail_page", garantia_id=garantia_id))
 
+@app.route("/garantias/<int:garantia_id>/eliminar", methods=["POST"])
+@admin_required
+def eliminar_garantia(garantia_id):
+    password_confirm = (request.form.get("password_confirm") or "").strip()
+
+    if not password_confirm:
+        flash("Debes ingresar tu contraseña para eliminar la garantía.", "error")
+        return redirect(url_for("garantias_page"))
+
+    current_user = get_current_user()
+    if not current_user:
+        flash("Sesión inválida.", "error")
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    user_row = conn.execute("""
+        SELECT id, password_hash
+        FROM usuarios
+        WHERE id = ? AND activo = 1
+    """, (current_user["id"],)).fetchone()
+
+    if not user_row or not check_password_hash(user_row["password_hash"], password_confirm):
+        conn.close()
+        flash("Contraseña incorrecta. No se eliminó la garantía.", "error")
+        return redirect(url_for("garantias_page"))
+
+    garantia = conn.execute("""
+        SELECT id, numero_garantia, activo
+        FROM garantias
+        WHERE id = ?
+    """, (garantia_id,)).fetchone()
+
+    if not garantia or int(garantia["activo"] or 0) != 1:
+        conn.close()
+        flash("Garantía no encontrada.", "error")
+        return redirect(url_for("garantias_page"))
+
+    current_user_id = current_user["id"]
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn.execute("""
+        UPDATE garantias
+        SET activo = 0,
+            actualizado_por_user_id = ?,
+            actualizado_en = ?
+        WHERE id = ?
+    """, (current_user_id, now_str, garantia_id))
+
+    conn.commit()
+    conn.close()
+
+    flash(f"Garantía {garantia['numero_garantia'] or garantia_id} eliminada correctamente.", "success")
+    return redirect(url_for("garantias_page"))
+
 @app.route("/cotizaciones/<int:cotizacion_id>/generar-garantia", methods=["POST"])
 @editor_required
 def generar_garantia_desde_cotizacion(cotizacion_id):
@@ -2395,6 +2463,7 @@ def generar_garantia_desde_cotizacion(cotizacion_id):
         SELECT id, numero_garantia
         FROM garantias
         WHERE cotizacion_id = ?
+          AND activo = 1
         ORDER BY id DESC
         LIMIT 1
     """, (cotizacion_id,)).fetchone()

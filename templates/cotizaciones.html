@@ -60,7 +60,8 @@
     font-size:13px;
     font-weight:700;
   }
-   .danger-btn{
+
+  .danger-btn{
     background:#dc2626;
     color:#fff;
     border:none;
@@ -70,7 +71,8 @@
     font-weight:700;
     cursor:pointer;
   }
-    .status-chip{
+
+  .status-chip{
     display:inline-flex;
     align-items:center;
     gap:6px;
@@ -104,52 +106,14 @@
   .inline-form{
     display:inline;
   }
-    .tiny-note{
+
+  .tiny-note{
     font-size:12px;
     color:#64748b;
     line-height:1.6;
   }
 
   .search-bar{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    align-items:end;
-    margin-bottom:18px;
-    padding:14px;
-    border:1px solid #dbe3ea;
-    border-radius:14px;
-    background:#f8fafc;
-  }
-
-  .search-bar .field{
-    flex:1 1 320px;
-    margin:0;
-  }
-
-  .search-bar input{
-    width:100%;
-    padding:10px 12px;
-    border:1px solid #cbd5e1;
-    border-radius:10px;
-    font-size:14px;
-    font-family:inherit;
-    box-sizing:border-box;
-    background:#fff;
-  }
-
-  .search-actions{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-  }
-
-  .empty-search-note{
-    margin-bottom:14px;
-    font-size:13px;
-    color:#64748b;
-  }
-    .search-bar{
     display:flex;
     gap:10px;
     flex-wrap:wrap;
@@ -214,20 +178,24 @@
       {% endif %}
     </div>
   </form>
+
   {% if cotizaciones %}
     <div class="lib-list">
       {% for c in cotizaciones %}
         <div class="lib-card">
           <strong>{{ c["numero"] or "Sin número" }}</strong>
+
           <span>
             {% if c["cliente"] %}Cliente: {{ c["cliente"] }}{% endif %}
             {% if c["fecha"] %} | Fecha: {{ c["fecha"] }}{% endif %}
           </span>
+
           <span>
             {% if c["ciudad"] %}Ciudad: {{ c["ciudad"] }}{% endif %}
             {% if c["validez"] %} | Validez: {{ c["validez"] }}{% endif %}
           </span>
-                 <span>
+
+          <span>
             Total: Bs. {{ c["total"] or 0 }}
             {% if c["estado"] %} | Estado comercial: {{ c["estado"] }}{% endif %}
           </span>
@@ -250,7 +218,8 @@
             Actualizado por: {{ c["actualizado_por_username"] or "N/D" }}
             {% if c["actualizado_en"] %} | Última actualización: {{ c["actualizado_en"] }}{% endif %}
           </span>
-                     <div class="actions">
+
+          <div class="actions">
             <a href="{{ url_for('cotizador') }}?cotizacion_id={{ c['id'] }}">Abrir en cotizador</a>
 
             {% if current_role in ['admin', 'editor'] and (c["estado_documental"] or "borrador") != "consolidada" %}
@@ -271,7 +240,7 @@
                 </form>
               {% else %}
                 <a href="{{ url_for('entrega_detail_page', entrega_id=c['ultima_entrega_id']) }}">Ver entrega</a>
-                {% endif %}
+              {% endif %}
 
               {% if (c["garantias_count"] or 0) == 0 %}
                 <form method="post"
@@ -296,12 +265,7 @@
         </div>
       {% endfor %}
     </div>
- {% else %}
-    {% if search_query %}
-      <p class="empty-search-note">
-        No se encontraron cotizaciones para: <strong>{{ search_query }}</strong>
-      </p>
-     {% else %}
+  {% else %}
     {% if search_query %}
       <p class="empty-search-note">
         No se encontraron cotizaciones para: <strong>{{ search_query }}</strong>
@@ -309,7 +273,6 @@
     {% else %}
       <p class="tiny-note">Todavía no hay cotizaciones guardadas en la base de datos.</p>
     {% endif %}
-  {% endif %}
   {% endif %}
 </section>
 {% endblock %}
