@@ -977,7 +977,70 @@ def crear_usuario():
     flash("Usuario creado correctamente.", "success")
     return redirect(url_for("usuarios_page"))
 
+@app.route("/usuarios/<int:user_id>/editar", methods=["POST"])
+@admin_required
+def actualizar_usuario(user_id):
+    username = (request.form.get("username") or "").strip()
+    nombre = (request.form.get("nombre") or "").strip()
+    password = request.form.get("password") or ""
 
+    if not username:
+        flash("El nombre de usuario es obligatorio.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    conn = get_db_connection()
+    ensure_auth_schema(conn)
+
+    usuario = conn.execute("""
+        SELECT id, username, activo
+        FROM usuarios
+        WHERE id = ?
+    """, (user_id,)).fetchone()
+
+    if not usuario or not usuario["activo"]:
+        conn.close()
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    existing = conn.execute("""
+        SELECT id
+        FROM usuarios
+        WHERE username = ?
+          AND id != ?
+    """, (username, user_id)).fetchone()
+
+    if existing:
+        conn.close()
+        flash("Ya existe otro usuario con ese nombre.", "error")
+        return redirect(url_for("usuarios_page"))
+
+    if password.strip():
+        conn.execute("""
+            UPDATE usuarios
+            SET username = ?, nombre = ?, password_hash = ?
+            WHERE id = ?
+        """, (
+            username,
+            nombre,
+            generate_password_hash(password),
+            user_id
+        ))
+    else:
+        conn.execute("""
+            UPDATE usuarios
+            SET username = ?, nombre = ?
+            WHERE id = ?
+        """, (
+            username,
+            nombre,
+            user_id
+        ))
+
+    conn.commit()
+    conn.close()
+
+    flash("Usuario actualizado correctamente.", "success")
+    return redirect(url_for("usuarios_page"))
 @app.route("/usuarios/<int:user_id>/rol", methods=["POST"])
 @admin_required
 def actualizar_rol_usuario(user_id):
