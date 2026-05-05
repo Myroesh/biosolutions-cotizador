@@ -863,7 +863,150 @@ def sync_garantia_serials_to_entrega(conn, cotizacion_id, source_garantia_payloa
         json.dumps(entrega_payload, ensure_ascii=False),
         entrega_row["id"]
     ))
+def sync_garantia_serials_to_entrega(conn, cotizacion_id, source_garantia_payload):
+    entrega = conn.execute("""
+        SELECT id
+        FROM entregas
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
 
+    if not entrega:
+        return
+
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega["id"])
+    if not entrega_row or not entrega_payload:
+        return
+
+    entrega_payload = copy_serials_between_payloads(source_garantia_payload, entrega_payload)
+
+    conn.execute("""
+        UPDATE entregas
+        SET payload_json = ?
+        WHERE id = ?
+    """, (
+        json.dumps(entrega_payload, ensure_ascii=False),
+        entrega_row["id"]
+    ))
+
+def rebuild_document_items_from_cotizacion_payload(cot_payload, document_payload):
+    if not isinstance(cot_payload, dict) or not isinstance(document_payload, dict):
+        return document_payload
+
+    cot_items = cot_payload.get("items", []) or []
+    existing_items = document_payload.get("items", []) or []
+
+    existing_by_id = {}
+    for item in existing_items:
+        item_id = (item.get("id") or "").strip()
+        if item_id:
+            existing_by_id[item_id] = item
+
+    rebuilt_items = []
+
+    for idx, item in enumerate(cot_items):
+        item_id = (item.get("id") or f"doc_item_{idx+1}").strip()
+
+        try:
+            quantity = int(float(str(item.get("quantity", "1")).replace(",", "").strip() or 1))
+        except ValueError:
+            quantity = 1
+
+        if quantity < 1:
+            quantity = 1
+
+        try:
+            unit_price = float(str(item.get("price", "0")).replace(",", "").strip() or 0)
+        except ValueError:
+            unit_price = 0
+
+        previous_item = existing_by_id.get(item_id, {})
+        previous_serials = list(previous_item.get("serials", []) or [])
+
+        normalized_serials = []
+        for i in range(quantity):
+            if i < len(previous_serials):
+                normalized_serials.append((previous_serials[i] or "").strip())
+            else:
+                normalized_serials.append("")
+
+        rebuilt_items.append({
+            "id": item_id,
+            "title": (item.get("title") or "").strip(),
+            "brand": (item.get("brand") or "").strip(),
+            "model": (item.get("model") or "").strip(),
+            "quantity": quantity,
+            "unitPrice": unit_price,
+            "totalPrice": round(unit_price * quantity, 2),
+            "serials": normalized_serials
+        })
+
+    document_payload["items"] = rebuilt_items
+    return document_payload
+
+
+def sync_entrega_structure_from_cotizacion(conn, cotizacion_id, cot_payload, total):
+    entrega = conn.execute("""
+        SELECT id
+        FROM entregas
+        WHERE cotizacion_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if not entrega:
+        return
+
+    entrega_row, entrega_payload = load_entrega_payload(conn, entrega["id"])
+    if not entrega_row or not entrega_payload:
+        return
+
+    entrega_payload = rebuild_document_items_from_cotizacion_payload(cot_payload, entrega_payload)
+    entrega_payload.setdefault("totals", {})
+    entrega_payload["totals"]["grandTotal"] = float(total or 0)
+
+    conn.execute("""
+        UPDATE entregas
+        SET total = ?, payload_json = ?
+        WHERE id = ?
+    """, (
+        float(total or 0),
+        json.dumps(entrega_payload, ensure_ascii=False),
+        entrega_row["id"]
+    ))
+
+
+def sync_garantia_structure_from_cotizacion(conn, cotizacion_id, cot_payload, total):
+    garantia = conn.execute("""
+        SELECT id
+        FROM garantias
+        WHERE cotizacion_id = ?
+          AND activo = 1
+        ORDER BY id DESC
+        LIMIT 1
+    """, (cotizacion_id,)).fetchone()
+
+    if not garantia:
+        return
+
+    garantia_row, garantia_payload = load_garantia_payload(conn, garantia["id"])
+    if not garantia_row or not garantia_payload:
+        return
+
+    garantia_payload = rebuild_document_items_from_cotizacion_payload(cot_payload, garantia_payload)
+    garantia_payload.setdefault("totals", {})
+    garantia_payload["totals"]["grandTotal"] = float(total or 0)
+
+    conn.execute("""
+        UPDATE garantias
+        SET total = ?, payload_json = ?
+        WHERE id = ?
+    """, (
+        float(total or 0),
+        json.dumps(garantia_payload, ensure_ascii=False),
+        garantia_row["id"]
+    ))
 # =========================
 # Rutas base / auth
 # =========================
@@ -1937,10 +2080,27 @@ def guardar_cotizacion():
             UPDATE cotizaciones
             SET payload_json = ?
             WHERE id = ?
-        """, (payload_json_final, cotizacion_id))
+            """, (payload_json_final, cotizacion_id))
+
+        full_payload["quotation"] = dict(full_payload.get("quotation") or {})
+        full_payload["quotation"]["dbId"] = cotizacion_id
+        full_payload["quotation"]["number"] = numero
+
+        sync_entrega_structure_from_cotizacion(
+            conn,
+            cotizacion_id,
+            full_payload,
+            total
+        )
+
+        sync_garantia_structure_from_cotizacion(
+            conn,
+            cotizacion_id,
+            full_payload,
+            total
+        )
 
         conn.commit()
-
         return jsonify({
             "ok": True,
             "cotizacion_id": cotizacion_id,
