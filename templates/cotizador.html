@@ -166,6 +166,25 @@
     color: #0a4570;
     font-weight: 800;
   }
+   @media screen and (max-width: 768px) {
+  .preview-area {
+    padding: 12px 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-preview-frame {
+    width: calc(216mm * 0.43);
+    min-height: calc(279mm * 0.43);
+    margin: 0 auto;
+  }
+
+  #previewPages {
+    width: 216mm;
+    transform: scale(0.43);
+    transform-origin: top left;
+  }
+} 
 </style>
 {% endblock %}
 
@@ -174,7 +193,7 @@
   <aside class="sidebar">
     <div class="brand-box">
       <img src="{{ url_for('static', filename='logo_biosolutions.png') }}" alt="BioSolutions" class="brand-logo" />
-      <p class="brand-note">Cotizador técnico-comercial v2</p>
+      <p class="brand-note">Cotizador Biosolutions v2</p>
     </div>
 
     <section class="panel">
@@ -372,8 +391,10 @@
   </aside>
 
   <main class="preview-area">
+  <div class="mobile-preview-frame">
     <div id="previewPages"></div>
-  </main>
+  </div>
+</main>
 </div>
 {% endblock %}
 

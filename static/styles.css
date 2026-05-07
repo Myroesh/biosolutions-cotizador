@@ -591,3 +591,25 @@ body{
 @media print{
   body{background:#fff}
 }
+@media screen and (max-width: 768px) {
+  .page-shell {
+    padding: 10px !important;
+  }
+
+  .preview-area {
+    padding: 12px 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #previewPages {
+    width: max-content;
+    transform: scale(0.43);
+    transform-origin: top left;
+  }
+
+  .preview-page {
+    margin: 0 0 16px 0 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+}

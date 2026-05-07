@@ -117,6 +117,8 @@
     border-radius:18px;
     min-height:900px;
     overflow:hidden;
+      width:216mm;
+    min-height:279mm;
     box-shadow:0 8px 24px rgba(0,0,0,.05);
   }
 
@@ -248,6 +250,23 @@
       grid-template-columns:1fr;
     }
   }
+  @media screen and (max-width: 768px) {
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doc-preview-frame {
+    width: calc(216mm * 0.43);
+    min-height: calc(279mm * 0.43);
+    margin: 0 auto;
+    overflow: visible;
+  }
+
+  .doc-preview {
+    transform: scale(0.43);
+    transform-origin: top left;
+  }
+}
 </style>
 {% endblock %}
 
@@ -335,7 +354,8 @@
     </form>
   </section>
 
-  <section class="doc-preview">
+  <section class="doc-preview-frame">
+  <div class="doc-preview">
     <div class="doc-left"></div>
     <div class="doc-content">
       <div class="doc-title">Acta de Entrega</div>
@@ -413,6 +433,7 @@
         </div>
       </div>
     </div>
-  </section>
+    </div>
+</section>
 </div>
 {% endblock %}
