@@ -196,7 +196,7 @@
   }
 
   .doc-sign{
-    margin-top:34px;
+    margin-top:90px;
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:26px;
@@ -365,30 +365,39 @@
             <th>Equipo</th>
             <th>Marca / Modelo</th>
             <th>Cant.</th>
+            <th>Precio</th>
             <th>Seriales</th>
           </tr>
         </thead>
         <tbody>
           {% for item in entrega_payload['items'] %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ item['title'] or '' }}</td>
-              <td>
-                {% if item['brand'] %}{{ item['brand'] }}{% endif %}
-                {% if item['model'] %} / {{ item['model'] }}{% endif %}
-              </td>
-              <td>{{ item['quantity'] or 1 }}</td>
-              <td>
-                {% for serial in item['serials'] %}
-                  {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
-                {% endfor %}
-              </td>
-            </tr>
-          {% endfor %}
+  {% set qty = (item.get('quantity') or 1)|float %}
+  {% set unit_price = (item.get('unitPrice') or 0)|float %}
+  {% set partial_price = item.get('totalPrice') %}
+              {% if partial_price is none or partial_price == '' %}
+                {% set partial_price = unit_price * qty %}
+              {% endif %}
+
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item['title'] or '' }}</td>
+                <td>
+                  {% if item['brand'] %}{{ item['brand'] }}{% endif %}
+                  {% if item['model'] %} / {{ item['model'] }}{% endif %}
+                </td>
+                <td>{{ item['quantity'] or 1 }}</td>
+                <td>Bs. {{ "%.2f"|format(partial_price|float) }}</td>
+                <td>
+                  {% for serial in item['serials'] %}
+                    {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
+                  {% endfor %}
+                </td>
+              </tr>
+            {% endfor %}
         </tbody>
       </table>
 
-      <p><strong>Total referencial:</strong> Bs. {{ entrega_payload['totals']['grandTotal'] or 0 }}</p>
+      <p><strong>Total:</strong> Bs. {{ entrega_payload['totals']['grandTotal'] or 0 }}</p>
 
       <div class="doc-sign">
         <div class="doc-sign-box">

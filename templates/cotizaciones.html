@@ -224,10 +224,11 @@
 
             {% if current_role in ['admin', 'editor'] and (c["estado_documental"] or "borrador") != "consolidada" %}
               <form method="post"
-                    action="{{ url_for('consolidar_cotizacion', cotizacion_id=c['id']) }}"
-                    class="inline-form"
-                    onsubmit="return confirm('¿Consolidar esta cotización? Luego podrás generar acta de entrega y garantía.');">
-                <button type="submit" class="secondary-btn">Consolidar</button>
+                action="{{ url_for('consolidar_cotizacion', cotizacion_id=c['id']) }}"
+                class="inline-form"
+                data-stay-on-cotizaciones="true"
+                data-confirm-message="¿Consolidar esta cotización? Luego podrás generar acta de entrega y garantía.">
+                          <button type="submit" class="secondary-btn">Consolidar</button>
               </form>
             {% endif %}
 
@@ -244,8 +245,9 @@
 
               {% if (c["garantias_count"] or 0) == 0 %}
                 <form method="post"
-                      action="{{ url_for('generar_garantia_desde_cotizacion', cotizacion_id=c['id']) }}"
-                      class="inline-form">
+                    action="{{ url_for('generar_garantia_desde_cotizacion', cotizacion_id=c['id']) }}"
+                    class="inline-form"
+                    data-stay-on-cotizaciones="true">
                   <button type="submit" class="secondary-btn">Generar garantía</button>
                 </form>
               {% else %}
@@ -275,4 +277,47 @@
     {% endif %}
   {% endif %}
 </section>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const forms = document.querySelectorAll("form[data-stay-on-cotizaciones='true']");
+    const reloadUrl = `${window.location.pathname}${window.location.search}`;
+
+    forms.forEach((form) => {
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const confirmMessage = form.dataset.confirmMessage;
+        if (confirmMessage && !window.confirm(confirmMessage)) {
+          return;
+        }
+
+        const submitButton = event.submitter || form.querySelector("button[type='submit']");
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = "Procesando...";
+        }
+
+        try {
+          const response = await fetch(form.action, {
+            method: form.method || "POST",
+            body: new FormData(form),
+            credentials: "same-origin",
+            headers: {
+              "X-Requested-With": "fetch"
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`Respuesta HTTP ${response.status}`);
+          }
+
+          window.location.assign(reloadUrl);
+        } catch (error) {
+          console.error("No se pudo completar la acción sin salir de cotizaciones:", error);
+          form.submit();
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

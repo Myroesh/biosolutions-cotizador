@@ -7,3 +7,7 @@ __pycache__/
 .env
 .env.*
 .DS_Store
+biosolutions.db
+*.db
+backups/
+static/uploads/

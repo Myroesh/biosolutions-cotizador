@@ -237,7 +237,23 @@
     color:#0a4570;
     opacity:.9;
   }
+  .doc-sign{
+  margin-top:90px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:26px;
+  }
 
+  .doc-sign-box{
+    text-align:center;
+    padding-top:18px;
+  }
+
+  .doc-sign-line{
+    border-top:1px solid #64748b;
+    margin-bottom:8px;
+    height:1px;
+  }
   @media print{
     .topbar,
     .inline-actions,
@@ -366,35 +382,57 @@
             <th>Equipo</th>
             <th>Marca / Modelo</th>
             <th>Cant.</th>
+            <th>Precio</th>
             <th>Seriales</th>
           </tr>
         </thead>
         <tbody>
           {% for item in garantia_payload['items'] %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ item['title'] or '' }}</td>
-              <td>
-                {% if item['brand'] %}{{ item['brand'] }}{% endif %}
-                {% if item['model'] %} / {{ item['model'] }}{% endif %}
-              </td>
-              <td>{{ item['quantity'] or 1 }}</td>
-              <td>
-                {% for serial in item['serials'] %}
-                  {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
-                {% endfor %}
-              </td>
-            </tr>
-          {% endfor %}
+          {% set qty = (item.get('quantity') or 1)|float %}
+          {% set unit_price = (item.get('unitPrice') or 0)|float %}
+          {% set partial_price = item.get('totalPrice') %}
+          {% if partial_price is none or partial_price == '' %}
+            {% set partial_price = unit_price * qty %}
+          {% endif %}
+
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ item['title'] or '' }}</td>
+            <td>
+              {% if item['brand'] %}{{ item['brand'] }}{% endif %}
+              {% if item['model'] %} / {{ item['model'] }}{% endif %}
+            </td>
+            <td>{{ item['quantity'] or 1 }}</td>
+            <td>Bs. {{ "%.2f"|format(partial_price|float) }}</td>
+            <td>
+              {% for serial in item['serials'] %}
+                {% if serial %}{{ serial }}{% else %}—{% endif %}{% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
         </tbody>
       </table>
 
-      <p><strong>Total referencial:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
+      <p><strong>Total:</strong> Bs. {{ garantia_payload['totals']['grandTotal'] or 0 }}</p>
 
       <p>
         Esta garantía cubre exclusivamente defectos de fábrica o mal funcionamiento bajo uso adecuado,
         hasta la fecha de vencimiento indicada en el presente documento.
       </p>
+      <div class="doc-sign">
+      <div class="doc-sign-box">
+        <div class="doc-sign-line"></div>
+        <div>Entrega</div>
+        <div>Biosolutions</div>
+      </div>
+
+      <div class="doc-sign-box">
+        <div class="doc-sign-line"></div>
+        <div>Recibe</div>
+        <div>{{ garantia_payload['document']['client'] or '' }}</div>
+      </div>
+    </div>
     </div>
   </section>
 </div>
