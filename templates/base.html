@@ -33,6 +33,16 @@
       font-weight:800;
       color:#0a4570;
     }
+    .mobile-menu-btn {
+      display: none;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 12px;
+      background: #0b8fb0;
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
     .nav-links{
       display:flex;
       flex-wrap:wrap;
@@ -130,8 +140,64 @@
       font-weight:700;
       font-size:13px;
     }
+    @media (max-width: 768px) {
+    .topbar {
+      padding: 10px 12px;
+      gap: 10px;
+      transition: transform .22s ease;
+    }
+
+    .topbar-hidden {
+      transform: translateY(-100%);
+    }
+
+    .topbar-left {
+      gap: 8px;
+    }
+
+    .topbar-logo {
+      height: 34px;
+    }
+
+    .topbar-title {
+      font-size: 15px;
+    }
+
+    .topbar-right {
+      justify-content: flex-end;
+    }
+
+    .mobile-menu-btn {
+      display: inline-flex;
+    }
+
+    .nav-links {
+      display: none;
+      position: absolute;
+      top: 58px;
+      right: 12px;
+      left: 12px;
+      background: #fff;
+      border: 1px solid #dbe3ea;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.12);
+      flex-direction: column;
+      z-index: 50;
+    }
+
+    .nav-links.is-open {
+      display: flex;
+    }
+
+    .nav-links a {
+      font-size: 15px;
+      padding: 12px 14px;
+    }
+  }
     @media print{
-      .topbar{
+      .topbar,
+      .flash-wrap{
         display:none !important;
       }
 
@@ -150,6 +216,9 @@
     </div>
 
     <div class="topbar-right">
+      <button class="mobile-menu-btn" type="button" aria-label="Abrir menú">
+        ☰ Menú
+      </button>
       <nav class="nav-links">
         <a href="{{ url_for('dashboard') }}" class="{% if active_page == 'inicio' %}active{% endif %}">Inicio</a>
 
@@ -191,7 +260,50 @@
 
     {% block content %}{% endblock %}
   </main>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const topbar = document.querySelector(".topbar");
+  const btn = document.querySelector(".mobile-menu-btn");
+  const menu = document.querySelector(".nav-links");
 
+  if (btn && menu) {
+    btn.addEventListener("click", () => {
+      menu.classList.toggle("is-open");
+    });
+
+    menu.querySelectorAll("a").forEach(link => {
+      link.addEventListener("click", () => {
+        menu.classList.remove("is-open");
+      });
+    });
+  }
+
+  let lastScroll = window.scrollY;
+
+  window.addEventListener("scroll", () => {
+    if (!topbar) return;
+
+    const current = window.scrollY;
+
+    if (current > lastScroll && current > 80) {
+      topbar.classList.add("topbar-hidden");
+    } else {
+      topbar.classList.remove("topbar-hidden");
+    }
+
+    lastScroll = current;
+  });
+});
+</script>
   {% block scripts %}{% endblock %}
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+      document.querySelectorAll(".flash-msg").forEach((msg) => {
+        msg.remove();
+      });
+    }, 1500);
+  });
+</script>
 </body>
 </html>

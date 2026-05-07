@@ -235,8 +235,9 @@
             {% if current_role in ['admin', 'editor'] and (c["estado_documental"] or "borrador") == "consolidada" %}
               {% if (c["entregas_count"] or 0) == 0 %}
                 <form method="post"
-                      action="{{ url_for('generar_entrega_desde_cotizacion', cotizacion_id=c['id']) }}"
-                      class="inline-form">
+                    action="{{ url_for('generar_entrega_desde_cotizacion', cotizacion_id=c['id']) }}"
+                    class="inline-form"
+                    data-stay-on-cotizaciones="true">
                   <button type="submit" class="secondary-btn">Generar acta de entrega</button>
                 </form>
               {% else %}
