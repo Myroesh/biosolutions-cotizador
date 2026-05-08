@@ -716,18 +716,18 @@ function buildItemPageFrame(item, options = {}) {
         <section class="preview-hero">
           <div>
             <img src="/static/logo_biosolutions.png" alt="BioSolutions" class="preview-logo" />
-            ${continuation ? `<div class="continuation-chip">Continuación técnica · Página ${continuationIndex}</div>` : ""}
+           
           </div>
           <div class="doc-chip">
-            <span class="label">Documento</span>
-            <span class="value ${continuation ? "is-continuation" : ""}">
+          
+          
               ${continuation ? "Ficha técnica complementaria" : "Ficha técnica"}
             </span>
           </div>
         </section>
 
         <section class="title-card">
-          <span class="eyebrow">Equipo médico / laboratorio</span>
+          ${!continuation ? '<span class="eyebrow">Equipo médico / laboratorio</span>' : ''}
           <h1 class="doc-title">${escapeHtml(item.title || "")}</h1>
           <p class="subtitle">${escapeHtml(item.subtitle || "")}</p>
           ${buildHeaderMetaGrid(item, qty, subtotal, !continuation)}
@@ -997,7 +997,7 @@ function buildTotalPage() {
             <img src="/static/logo_biosolutions.png" alt="BioSolutions" class="preview-logo" />
           </div>
           <div class="doc-chip">
-            
+
             <span class="value">Resumen final</span>
           </div>
         </section>

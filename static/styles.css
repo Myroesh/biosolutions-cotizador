@@ -11,7 +11,13 @@
   --danger:#dc2626;
 }
 
-*{box-sizing:border-box}
+/* =========================
+   Base
+========================= */
+
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
@@ -19,6 +25,10 @@ body{
   background:var(--bg);
   color:var(--text);
 }
+
+/* =========================
+   App layout
+========================= */
 
 .app-shell{
   display:grid;
@@ -40,6 +50,10 @@ body{
   padding:22px;
   overflow:auto;
 }
+
+/* =========================
+   Sidebar / editor
+========================= */
 
 .brand-box{
   margin-bottom:18px;
@@ -231,7 +245,10 @@ body{
   justify-content:flex-end;
 }
 
-/* Preview pages */
+/* =========================
+   Documento / páginas PDF
+========================= */
+
 .preview-page{
   width:216mm;
   height:279mm;
@@ -241,8 +258,8 @@ body{
   position:relative;
   overflow:hidden;
   box-shadow:0 8px 28px rgba(0,0,0,.10);
-  page-break-inside: avoid;
-  break-inside: avoid-page;
+  page-break-inside:avoid;
+  break-inside:avoid-page;
 }
 
 .left-band{
@@ -251,10 +268,16 @@ body{
   left:0;
   bottom:0;
   width:24mm;
-  background:linear-gradient(180deg,#0a4570 0%, #0b8fb0 38%, #f6a21a 72%, #f47c20 100%);
+  background:linear-gradient(
+    180deg,
+    #0a4570 0%,
+    #0b8fb0 38%,
+    #f6a21a 72%,
+    #f47c20 100%
+  );
   opacity:.98;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
 }
 
 .left-band::after{
@@ -262,9 +285,17 @@ body{
   position:absolute;
   inset:0;
   background:
-    linear-gradient(145deg,rgba(255,255,255,.18) 12%,transparent 12% 24%,rgba(255,255,255,.12) 24% 36%,transparent 36% 52%,rgba(255,255,255,.08) 52% 67%,transparent 67%);
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.18) 12%,
+      transparent 12% 24%,
+      rgba(255,255,255,.12) 24% 36%,
+      transparent 36% 52%,
+      rgba(255,255,255,.08) 52% 67%,
+      transparent 67%
+    );
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
 }
 
 .preview-content{
@@ -293,6 +324,8 @@ body{
   padding:10px 12px;
   border-radius:14px;
   min-width:54mm;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
 }
 
 .doc-chip .label{
@@ -309,61 +342,7 @@ body{
   line-height:1.1;
   font-weight:800;
 }
-.preview-page.is-continuation .preview-content {
-  padding-top: 8mm;
-}
 
-.preview-page.is-continuation .preview-hero {
-  margin-bottom: 8px;
-}
-
-.preview-page.is-continuation .preview-logo {
-  width: 100px;
-}
-
-.continuation-chip {
-  display: inline-block;
-  margin-top: 6px;
-  background: #eef8fa;
-  color: var(--primary-dark);
-  border: 1px solid #cfe7ed;
-  border-radius: 999px;
-  padding: 5px 9px;
-  font-size: 10.5px;
-  font-weight: 800;
-}
-
-.doc-chip .value.is-continuation {
-  font-size: 15px;
-  line-height: 1.15;
-}
-
-.preview-page.is-continuation .title-card {
-  margin-top: 8px;
-  padding: 10px 12px;
-}
-
-.preview-page.is-continuation .main-grid {
-  margin-top: 10px;
-}
-
-.preview-page.is-continuation .card {
-  padding: 12px;
-}
-
-.preview-page.is-continuation .section-title {
-  font-size: 14px;
-}
-
-.preview-page.is-continuation .spec-table th {
-  font-size: 11px;
-  padding: 8px 9px;
-}
-
-.preview-page.is-continuation .spec-table td {
-  font-size: 11.5px;
-  padding: 7px 9px;
-}
 .title-card{
   margin-top:8px;
   background:#ffffff;
@@ -383,6 +362,8 @@ body{
   text-transform:uppercase;
   letter-spacing:.16em;
   font-weight:700;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
 }
 
 .doc-title{
@@ -391,6 +372,7 @@ body{
   line-height:1.1;
   color:#0f172a;
 }
+
 .subtitle{
   margin:0;
   color:#475569;
@@ -434,8 +416,8 @@ body{
   grid-template-columns:1.3fr .7fr;
   gap:10px;
   margin-top:10px;
-  break-inside: avoid-page;
-  page-break-inside: avoid;
+  break-inside:avoid-page;
+  page-break-inside:avoid;
   align-items:start;
 }
 
@@ -484,7 +466,10 @@ body{
   text-align:left;
   padding:8px 9px;
   font-size:11px;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
 }
+
 .spec-table td{
   border-top:1px solid var(--line);
   padding:7px 9px;
@@ -509,7 +494,7 @@ body{
   padding:8px;
   overflow:hidden;
   background:#f8fbfd;
-} 
+}
 
 .image-box img{
   width:100%;
@@ -533,6 +518,79 @@ body{
   font-size:11px;
   font-weight:700;
 }
+
+/* =========================
+   Páginas técnicas complementarias
+   Solo distribución, no identidad visual
+========================= */
+
+.preview-page.is-continuation .preview-content{
+  padding-top:8mm;
+}
+
+.preview-page.is-continuation .preview-hero{
+  margin-bottom:8px;
+}
+
+.preview-page.is-continuation .preview-logo{
+  width:100px;
+}
+
+.preview-page.is-continuation .title-card{
+  margin-top:8px;
+  padding:10px 12px;
+}
+
+.preview-page.is-continuation .main-grid{
+  margin-top:10px;
+}
+
+.preview-page.is-continuation .card{
+  padding:12px;
+}
+
+.preview-page.is-continuation .section-title{
+  font-size:14px;
+}
+
+.preview-page.is-continuation .spec-table th{
+  font-size:11px;
+  padding:8px 9px;
+}
+
+.preview-page.is-continuation .spec-table td{
+  font-size:11.5px;
+  padding:7px 9px;
+}
+
+/* 
+   Nota:
+   Esta clase todavía existe porque app.js la genera.
+   La dejamos discreta, pero no debe parecer otro eyebrow.
+*/
+
+.continuation-chip{
+  display:inline-block;
+  margin-top:6px;
+  color:var(--primary-dark);
+  font-size:10.5px;
+  font-weight:800;
+}
+
+/* 
+   Si app.js aún agrega is-continuation al texto del chip azul,
+   mantenemos el tamaño normal para que se parezca a la primera hoja.
+*/
+
+.doc-chip .value.is-continuation{
+  font-size:18px;
+  line-height:1.1;
+  font-weight:800;
+}
+
+/* =========================
+   Resumen / cierre de cotización
+========================= */
 
 .note-box{
   margin-top:16px;
@@ -565,6 +623,8 @@ body{
   text-align:left;
   padding:12px;
   font-size:12px;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
 }
 
 .quote-summary td{
@@ -604,23 +664,23 @@ body{
   grid-template-columns:1.2fr .8fr;
   gap:18px;
   align-items:end;
-  break-inside: avoid-page;
-  page-break-inside: avoid;
+  break-inside:avoid-page;
+  page-break-inside:avoid;
 }
 
 .contact{
   color:#52606d;
   font-size:12.5px;
   line-height:1.8;
-  break-inside: avoid-page;
-  page-break-inside: avoid;
+  break-inside:avoid-page;
+  page-break-inside:avoid;
 }
 
 .sign{
   text-align:right;
   color:#334155;
-  break-inside: avoid-page;
-  page-break-inside: avoid;
+  break-inside:avoid-page;
+  page-break-inside:avoid;
 }
 
 .sign-line{
@@ -629,7 +689,11 @@ body{
   border-top:1px solid #94a3b8;
 }
 
-@media (max-width: 1200px){
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width:1200px){
   .app-shell{
     grid-template-columns:1fr;
   }
@@ -642,28 +706,80 @@ body{
   }
 }
 
-@media print{
-  body{background:#fff}
+@media screen and (max-width:768px){
+  .page-shell{
+    padding:10px;
+  }
+
+  .preview-area{
+    padding:12px 0;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  #previewPages{
+    width:max-content;
+    transform:scale(.43);
+    transform-origin:top left;
+  }
+
+  .preview-page{
+    margin:0 0 16px 0;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);
+  }
 }
-@media screen and (max-width: 768px) {
-  .page-shell {
-    padding: 10px !important;
+
+/* =========================
+   Print / PDF
+========================= */
+
+@page{
+  size:letter;
+  margin:0;
+}
+
+@media print{
+  html,
+  body{
+    background:#fff;
+    margin:0;
+    padding:0;
   }
 
-  .preview-area {
-    padding: 12px 0 !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
+  .sidebar,
+  .no-print{
+    display:none;
   }
 
-  #previewPages {
-    width: max-content;
-    transform: scale(0.43);
-    transform-origin: top left;
+  .app-shell{
+    display:block;
+    min-height:auto;
   }
 
-  .preview-page {
-    margin: 0 0 16px 0 !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  .preview-area{
+    padding:0;
+    overflow:visible;
+  }
+
+  .preview-page{
+    margin:0;
+    box-shadow:none;
+    page-break-after:always;
+    break-after:page;
+  }
+
+  .preview-page:last-child{
+    page-break-after:auto;
+    break-after:auto;
+  }
+
+  .left-band,
+  .left-band::after,
+  .doc-chip,
+  .eyebrow,
+  .spec-table th,
+  .quote-summary th{
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
   }
 }
