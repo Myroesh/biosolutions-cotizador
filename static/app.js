@@ -997,7 +997,7 @@ function buildTotalPage() {
             <img src="/static/logo_biosolutions.png" alt="BioSolutions" class="preview-logo" />
           </div>
           <div class="doc-chip">
-            <span class="label">Documento</span>
+            
             <span class="value">Resumen final</span>
           </div>
         </section>
