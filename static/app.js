@@ -586,7 +586,7 @@ function getPageBudgets(item, pageNo) {
   if (pageNo === 0) {
     return {
       left: 19,
-      right: hasImage ? 9 : 13
+      right: hasImage ? 14 : 17
     };
   }
 
@@ -831,7 +831,7 @@ function buildItemPages(item) {
       const accessoriesTake = takeSimpleListByBudget(
         accessories,
         accessoriesIndex,
-        Math.max(0, Math.min(3, rightRemaining)),
+        Math.max(0, rightRemaining),
         42
       );
       accessoriesChunk = accessoriesTake.items;
