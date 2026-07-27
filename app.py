@@ -2351,7 +2351,6 @@ def guardar_entrega(entrega_id):
 @editor_required
 def generar_entrega_desde_cotizacion(cotizacion_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     cot = conn.execute("""
         SELECT *
@@ -2675,7 +2674,6 @@ def eliminar_garantia(garantia_id):
 @editor_required
 def generar_garantia_desde_cotizacion(cotizacion_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     cot = conn.execute("""
         SELECT *
