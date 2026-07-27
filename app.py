@@ -1048,10 +1048,6 @@ def dashboard():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    conn = get_db_connection()
-    ensure_auth_schema(conn)
-    conn.close()
-
     if session.get("user_id"):
         return redirect(url_for("dashboard"))
 
@@ -1091,7 +1087,6 @@ def logout():
 @admin_required
 def usuarios_page():
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     usuarios = conn.execute("""
         SELECT id, username, nombre, rol, activo, creado_en
@@ -1107,7 +1102,6 @@ def usuarios_page():
 @admin_required
 def crear_usuario():
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     username = (request.form.get("username") or "").strip()
     nombre = (request.form.get("nombre") or "").strip()
@@ -1161,7 +1155,6 @@ def actualizar_usuario(user_id):
         return redirect(url_for("usuarios_page"))
 
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     usuario = conn.execute("""
         SELECT id, username, activo
@@ -1228,7 +1221,6 @@ def actualizar_rol_usuario(user_id):
         return redirect(url_for("usuarios_page"))
 
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     conn.execute("""
         UPDATE usuarios
@@ -1252,7 +1244,6 @@ def desactivar_usuario(user_id):
         return redirect(url_for("usuarios_page"))
 
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     conn.execute("""
         UPDATE usuarios
