@@ -2205,7 +2205,6 @@ def consolidar_cotizacion(cotizacion_id):
 @login_required
 def entregas_page():
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     entregas = conn.execute("""
         SELECT
@@ -2228,7 +2227,6 @@ def entregas_page():
 @login_required
 def entrega_detail_page(entrega_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
     conn.close()
@@ -2480,7 +2478,6 @@ def generar_entrega_desde_cotizacion(cotizacion_id):
 @login_required
 def garantias_page():
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     garantias_rows = conn.execute("""
         SELECT
@@ -2510,7 +2507,6 @@ def garantias_page():
 @login_required
 def garantia_detail_page(garantia_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     garantia_row, garantia_payload = load_garantia_payload(conn, garantia_id)
     conn.close()
