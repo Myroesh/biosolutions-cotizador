@@ -1,13 +1,23 @@
-venv/
-.venv/
+# Local databases, backups and exports
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+backups/
+exports/
+
+# Python generated files
 __pycache__/
 *.pyc
-*.pyo
-*.log
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+.venv-*/
+
+# Secrets / environment
 .env
 .env.*
-.DS_Store
-biosolutions.db
-*.db
-backups/
-static/uploads/
+*.pem
+*.key
