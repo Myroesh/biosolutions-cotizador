@@ -2009,7 +2009,6 @@ def guardar_cotizacion():
         payload_json = json.dumps(full_payload, ensure_ascii=False)
 
         conn = get_db_connection()
-        ensure_auth_schema(conn)
 
         if db_id:
             conn.execute("""
