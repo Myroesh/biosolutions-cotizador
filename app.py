@@ -200,6 +200,11 @@ def init_db_schema():
                 conn.close()
 
 
+@app.before_request
+def auto_init_db_schema_before_request():
+    init_db_schema()
+
+
 # =========================
 # Auth / permisos
 # =========================

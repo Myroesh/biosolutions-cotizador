@@ -152,6 +152,44 @@ class TestSchemaInit(unittest.TestCase):
             if os.path.exists(temp_db_path):
                 os.remove(temp_db_path)
 
+    def test_before_request_auto_initializes_schema(self):
+        """Verifica que al realizar una petición HTTP vía test_client(), @app.before_request inicialice el esquema automáticamente."""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
+            temp_db_path = temp_file.name
+
+        try:
+            app.DB_PATH = temp_db_path
+
+            # Inicializar esquema base para que ensure_* no falle por tablas faltantes
+            conn = app.get_db_connection()
+            conn.executescript(init_db.schema)
+            conn.close()
+
+            abs_temp_path = os.path.abspath(temp_db_path)
+            self.assertNotIn(abs_temp_path, app._initialized_schema_paths)
+
+            with app.app.test_client() as client:
+                response = client.get("/login")
+                self.assertIn(response.status_code, (200, 302))
+
+            self.assertIn(abs_temp_path, app._initialized_schema_paths)
+
+            conn = app.get_db_connection()
+            tables = [
+                row["name"]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            ]
+            conn.close()
+
+            self.assertIn("usuarios", tables)
+            self.assertIn("entregas", tables)
+            self.assertIn("garantias", tables)
+        finally:
+            if os.path.exists(temp_db_path):
+                os.remove(temp_db_path)
+
 
 if __name__ == "__main__":
     unittest.main()
