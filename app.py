@@ -2245,7 +2245,6 @@ def entrega_detail_page(entrega_id):
 @editor_required
 def guardar_entrega(entrega_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     entrega_row, entrega_payload = load_entrega_payload(conn, entrega_id)
     if not entrega_row:
@@ -2528,7 +2527,6 @@ def garantia_detail_page(garantia_id):
 @editor_required
 def guardar_garantia(garantia_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     garantia_row, garantia_payload = load_garantia_payload(conn, garantia_id)
     if not garantia_row:
