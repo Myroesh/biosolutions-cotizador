@@ -1302,7 +1302,6 @@ def upload_image():
 @login_required
 def cotizador():
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     plantillas = conn.execute("""
         SELECT
@@ -1793,7 +1792,6 @@ def eliminar_plantilla(plantilla_id):
 @login_required
 def cotizaciones_page():
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     q = (request.args.get("q") or "").strip()
     q_like = f"%{q}%"
@@ -1867,7 +1865,6 @@ def cotizaciones_page():
 @login_required
 def cotizacion_json(cotizacion_id):
     conn = get_db_connection()
-    ensure_payload_json_column(conn)
 
     cot = conn.execute("""
         SELECT *
