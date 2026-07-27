@@ -2140,7 +2140,6 @@ def guardar_cotizacion():
 @admin_required
 def eliminar_cotizacion(cotizacion_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     cot = conn.execute("""
         SELECT id
@@ -2165,7 +2164,6 @@ def eliminar_cotizacion(cotizacion_id):
 @editor_required
 def consolidar_cotizacion(cotizacion_id):
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     cot = conn.execute("""
         SELECT id, estado_documental
@@ -2633,7 +2631,6 @@ def eliminar_garantia(garantia_id):
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    ensure_auth_schema(conn)
 
     user_row = conn.execute("""
         SELECT id, password_hash
