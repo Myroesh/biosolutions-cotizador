@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 import json
 import os
 import sqlite3
+import threading
 import uuid
 from datetime import date, datetime, timedelta
 from functools import wraps
@@ -174,6 +175,29 @@ def ensure_documentos_schema(conn):
 def ensure_auth_schema(conn):
     ensure_users_table(conn)
     ensure_documentos_schema(conn)
+
+
+_schema_init_lock = threading.Lock()
+_initialized_schema_paths = set()
+
+
+def init_db_schema():
+    global _initialized_schema_paths
+    current_path = os.path.abspath(DB_PATH)
+    with _schema_init_lock:
+        if current_path in _initialized_schema_paths:
+            return True
+
+        ensure_upload_dir()
+        conn = None
+        try:
+            conn = get_db_connection()
+            ensure_auth_schema(conn)
+            _initialized_schema_paths.add(current_path)
+            return True
+        finally:
+            if conn:
+                conn.close()
 
 
 # =========================
@@ -2778,10 +2802,7 @@ def generar_garantia_desde_cotizacion(cotizacion_id):
 
 
 if __name__ == "__main__":
-    ensure_upload_dir()
-    conn = get_db_connection()
-    ensure_auth_schema(conn)
-    conn.close()
+    init_db_schema()
     app.run(host="0.0.0.0", port=8081, debug=True)
 
 
