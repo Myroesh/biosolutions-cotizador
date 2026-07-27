@@ -6,11 +6,16 @@ from datetime import date
 # Asegurar que el directorio raíz esté en sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app import build_initial_entrega_payload, build_initial_garantia_payload
+from app import (
+    build_initial_entrega_payload,
+    build_initial_garantia_payload,
+    copy_serials_between_payloads,
+    rebuild_document_items_from_cotizacion_payload,
+)
 
 
 class TestPayloadBuilders(unittest.TestCase):
-    """Pruebas unitarias puras para la construcción de payloads iniciales de entregas y garantías."""
+    """Pruebas unitarias puras para la construcción y manipulación de payloads de entregas y garantías."""
 
     def setUp(self):
         self.sample_cot_row = {"id": 10, "total": 2500.50}
@@ -168,6 +173,55 @@ class TestPayloadBuilders(unittest.TestCase):
         res_gar = build_initial_garantia_payload(self.sample_cot_row, cot_payload, "GAR-004")
         self.assertEqual(res_gar["items"][0]["id"], "gar_item_1")
 
+    def test_copy_serials_between_payloads_normal_and_edge_cases(self):
+        """Verifica la copia de seriales entre dos payloads y manejo de casos raros o nulos."""
+        source = {
+            "items": [
+                {"quantity": 2, "serials": ["SN-100", "SN-101"]},
+                {"quantity": 1, "serials": ["SN-200"]},
+            ]
+        }
+        target = {
+            "items": [
+                {"quantity": 3, "serials": ["", "", ""]},
+                {"quantity": 1, "serials": [""]},
+            ]
+        }
+
+        res = copy_serials_between_payloads(source, target)
+        self.assertEqual(res["items"][0]["serials"], ["SN-100", "SN-101", ""])
+        self.assertEqual(res["items"][1]["serials"], ["SN-200"])
+
+        # Casos no dict o vacíos
+        self.assertIsNone(copy_serials_between_payloads(None, None))
+        self.assertEqual(copy_serials_between_payloads(source, "invalid"), "invalid")
+
+    def test_rebuild_document_items_from_cotizacion_payload_normal_and_edge_cases(self):
+        """Verifica el re-ensamblado de ítems de cotización manteniendo seriales previos por ID."""
+        cot_payload = {
+            "items": [
+                {"id": "item_1", "title": "Equipo Actualizado", "quantity": "2", "price": "500"},
+                {"id": "item_2", "title": "Accesorio Nuevo", "quantity": "1", "price": "50"},
+            ]
+        }
+        doc_payload = {
+            "items": [
+                {"id": "item_1", "title": "Equipo Viejo", "quantity": 1, "serials": ["SN-ORIGINAL"]},
+            ]
+        }
+
+        res = rebuild_document_items_from_cotizacion_payload(cot_payload, doc_payload)
+        items = res["items"]
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]["title"], "Equipo Actualizado")
+        self.assertEqual(items[0]["serials"], ["SN-ORIGINAL", ""])
+        self.assertEqual(items[1]["title"], "Accesorio Nuevo")
+        self.assertEqual(items[1]["serials"], [""])
+
+        # Caso no dict
+        self.assertEqual(rebuild_document_items_from_cotizacion_payload("invalid", doc_payload), doc_payload)
+
 
 if __name__ == "__main__":
     unittest.main()
+
