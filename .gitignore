@@ -21,3 +21,7 @@ venv/
 .env.*
 *.pem
 *.key
+
+# Uploaded quotation images
+static/uploads/cotizaciones/*
+!static/uploads/cotizaciones/.gitkeep
