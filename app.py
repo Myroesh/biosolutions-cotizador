@@ -28,6 +28,7 @@ from services.document_service import (
     sync_entrega_structure_from_cotizacion,
     sync_garantia_structure_from_cotizacion,
 )
+import db.connection
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "biosolutions-dev-secret-change-this")
@@ -55,9 +56,7 @@ def allowed_image_file(filename):
 
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return db.connection.get_db_connection(DB_PATH)
 
 
 # =========================
@@ -76,28 +75,17 @@ from db.schema import (
 )
 
 
-
-_schema_init_lock = threading.Lock()
-_initialized_schema_paths = set()
+_schema_init_lock = db.connection._schema_init_lock
+_initialized_schema_paths = db.connection._initialized_schema_paths
 
 
 def init_db_schema():
-    global _initialized_schema_paths
-    current_path = os.path.abspath(DB_PATH)
-    with _schema_init_lock:
-        if current_path in _initialized_schema_paths:
-            return True
-
-        ensure_upload_dir()
-        conn = None
-        try:
-            conn = get_db_connection()
-            ensure_auth_schema(conn)
-            _initialized_schema_paths.add(current_path)
-            return True
-        finally:
-            if conn:
-                conn.close()
+    return db.connection.init_db_schema(
+        DB_PATH,
+        ensure_upload_dir_fn=ensure_upload_dir,
+        ensure_auth_schema_fn=ensure_auth_schema,
+        initialized_paths=_initialized_schema_paths,
+    )
 
 
 @app.before_request
