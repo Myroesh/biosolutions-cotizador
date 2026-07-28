@@ -1,8 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 import json
 import os
-import sqlite3
-import threading
 import uuid
 from datetime import date, datetime, timedelta
 from functools import wraps
