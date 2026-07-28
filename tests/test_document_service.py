@@ -1,14 +1,22 @@
+import json
 import os
 import sqlite3
 import tempfile
 import unittest
 
 from db.schema import ensure_auth_schema
-from services.document_service import load_entrega_payload, load_garantia_payload
+from services.document_service import (
+    load_entrega_payload,
+    load_garantia_payload,
+    sync_entrega_serials_to_garantia,
+    sync_garantia_serials_to_entrega,
+    sync_entrega_structure_from_cotizacion,
+    sync_garantia_structure_from_cotizacion,
+)
 
 
 class TestDocumentServiceLoaders(unittest.TestCase):
-    """Pruebas unitarias directas para los lectores de servicios documentales."""
+    """Pruebas unitarias directas para los lectores y sincronizadores documentales."""
 
     def setUp(self):
         self.real_db_path = os.path.abspath("biosolutions.db")
@@ -125,5 +133,90 @@ class TestDocumentServiceLoaders(unittest.TestCase):
             inactiva_row, inactiva_payload = load_garantia_payload(conn, garantia_id + 1)
             self.assertIsNone(inactiva_row)
             self.assertIsNone(inactiva_payload)
+        finally:
+            conn.close()
+
+    def test_sync_entrega_and_garantia_serials_on_temp_db(self):
+        """Verifica la sincronización de seriales entre entregas y garantías en DB temporal sin commit interno."""
+        conn = sqlite3.connect(self.temp_db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("CREATE TABLE cotizaciones (id INTEGER PRIMARY KEY AUTOINCREMENT)")
+            ensure_auth_schema(conn)
+
+            cot_id = 5
+            entrega_payload = {
+                "document": {"cotizacionId": cot_id},
+                "items": [{"id": "item-1", "name": "Eq 1", "quantity": 2, "serials": ["SN-100", "SN-101"]}]
+            }
+            garantia_payload = {
+                "document": {"cotizacionId": cot_id},
+                "items": [{"id": "item-1", "name": "Eq 1", "quantity": 2, "serials": ["", ""]}]
+            }
+
+            conn.execute("""
+                INSERT INTO garantias (
+                    cotizacion_id, numero_garantia, fecha_emision, fecha_vencimiento,
+                    cliente_nombre, cliente_documento, texto_garantia, total, payload_json, activo
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            """, (cot_id, "GAR-5", "2026-04-01", "2027-04-01", "Cli", "Doc", "Txt", 100.0, json.dumps(garantia_payload)))
+
+            conn.execute("""
+                INSERT INTO entregas (
+                    cotizacion_id, numero_entrega, fecha_entrega, cliente_nombre,
+                    cliente_documento, recibe_nombre, entrega_nombre, entrega_documento_texto,
+                    texto_intro, total, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (cot_id, "ENT-5", "2026-04-01", "Cli", "Doc", "Rec", "Ent", "Txt", "Intro", 100.0, json.dumps(entrega_payload)))
+
+            # Sincronizar entregas -> garantías
+            sync_entrega_serials_to_garantia(conn, cot_id, entrega_payload)
+            _, updated_garantia = load_garantia_payload(conn, 1)
+            self.assertEqual(updated_garantia["items"][0]["serials"], ["SN-100", "SN-101"])
+
+            # Sincronizar garantías -> entregas
+            updated_garantia["items"][0]["serials"] = ["SN-999", "SN-888"]
+            sync_garantia_serials_to_entrega(conn, cot_id, updated_garantia)
+            _, updated_entrega = load_entrega_payload(conn, 1)
+            self.assertEqual(updated_entrega["items"][0]["serials"], ["SN-999", "SN-888"])
+        finally:
+            conn.close()
+
+    def test_sync_entrega_and_garantia_structure_from_cotizacion(self):
+        """Verifica la sincronización de estructuras de ítems y total desde cotización."""
+        conn = sqlite3.connect(self.temp_db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("CREATE TABLE cotizaciones (id INTEGER PRIMARY KEY AUTOINCREMENT)")
+            ensure_auth_schema(conn)
+
+            cot_id = 7
+            cot_payload = {
+                "items": [
+                    {"id": "item-1", "description": "Producto Nuevo A", "quantity": 2, "unitPrice": 500},
+                    {"id": "item-2", "description": "Producto Nuevo B", "quantity": 1, "unitPrice": 300}
+                ]
+            }
+
+            conn.execute("""
+                INSERT INTO entregas (cotizacion_id, total, payload_json)
+                VALUES (?, ?, ?)
+            """, (cot_id, 100.0, '{"items": []}'))
+
+            conn.execute("""
+                INSERT INTO garantias (cotizacion_id, total, payload_json, activo)
+                VALUES (?, ?, ?, 1)
+            """, (cot_id, 100.0, '{"items": []}'))
+
+            sync_entrega_structure_from_cotizacion(conn, cot_id, cot_payload, 1300.00)
+            sync_garantia_structure_from_cotizacion(conn, cot_id, cot_payload, 1300.00)
+
+            _, updated_entrega = load_entrega_payload(conn, 1)
+            _, updated_garantia = load_garantia_payload(conn, 1)
+
+            self.assertEqual(updated_entrega["totals"]["grandTotal"], 1300.00)
+            self.assertEqual(len(updated_entrega["items"]), 2)
+            self.assertEqual(updated_garantia["totals"]["grandTotal"], 1300.00)
+            self.assertEqual(len(updated_garantia["items"]), 2)
         finally:
             conn.close()
