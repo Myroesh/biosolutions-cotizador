@@ -1,3 +1,5 @@
+const MAX_SAFE_DESC_UNITS_PAGE_1 = 15;
+
 const appState = {
   quotation: {
     dbId: null,
@@ -310,6 +312,31 @@ function populateItemFields() {
 
   const showPrice = document.getElementById("itemShowPrice");
   if (showPrice) showPrice.checked = empty ? false : item.showPrice;
+
+  checkDescriptionWarning();
+}
+
+function estimateItemDescUnits(item) {
+  if (!item || !item.descriptionLong) return 0;
+  return estimateTextUnits(item.descriptionLong, 90);
+}
+
+function checkDescriptionWarning() {
+  const item = getSelectedItem();
+  const warningEl = document.getElementById("itemDescWarning");
+  if (!warningEl) return;
+
+  const descUnits = estimateItemDescUnits(item);
+  const isInvalid = descUnits > MAX_SAFE_DESC_UNITS_PAGE_1;
+
+  warningEl.classList.toggle("is-hidden", !isInvalid);
+  warningEl.textContent = isInvalid
+    ? "La descripción de este equipo supera el espacio seguro de la primera página. Redúzcala antes de imprimir."
+    : "";
+}
+
+function getInvalidDescriptionItems() {
+  return appState.items.filter(item => estimateItemDescUnits(item) > MAX_SAFE_DESC_UNITS_PAGE_1);
 }
 
 function renderItemsList() {
@@ -726,12 +753,20 @@ function buildItemPageFrame(item, options = {}) {
           </div>
         </section>
 
-        <section class="title-card">
-          ${!continuation ? '<span class="eyebrow">Equipo médico / laboratorio</span>' : ''}
-          <h1 class="doc-title">${escapeHtml(item.title || "")}</h1>
-          <p class="subtitle">${escapeHtml(item.subtitle || "")}</p>
-          ${buildHeaderMetaGrid(item, qty, subtotal, !continuation)}
-        </section>
+        ${continuation ? `
+          <section class="title-card continuation-title-card">
+            <div class="continuation-text">
+              Continuación — ${escapeHtml(item.title || "")}
+            </div>
+          </section>
+        ` : `
+          <section class="title-card">
+            <span class="eyebrow">Equipo médico / laboratorio</span>
+            <h1 class="doc-title">${escapeHtml(item.title || "")}</h1>
+            <p class="subtitle">${escapeHtml(item.subtitle || "")}</p>
+            ${buildHeaderMetaGrid(item, qty, subtotal, true)}
+          </section>
+        `}
 
         <section class="main-grid">
           <div>${topLeftHtml}${bottomLeftHtml}</div>
@@ -743,14 +778,17 @@ function buildItemPageFrame(item, options = {}) {
 }
 
 function buildItemPages(item) {
-  const descriptionParts = splitLongText(item.descriptionLong || "", 680);
+  const fullDescription = String(item.descriptionLong || "").trim();
+  const descUnits = estimateTextUnits(fullDescription, 90);
+  const exceedsDescLimit = descUnits > MAX_SAFE_DESC_UNITS_PAGE_1;
+
   const highlights = Array.isArray(item.highlights) ? item.highlights : [];
   const specs = Array.isArray(item.specs) ? item.specs : [];
   const uses = Array.isArray(item.uses) ? item.uses : [];
   const accessories = Array.isArray(item.accessories) ? item.accessories : [];
   const advantages = Array.isArray(item.advantages) ? item.advantages : [];
 
-  let descIndex = 0;
+  let descConsumedOnPage1 = false;
   let highlightsIndex = 0;
   let specsIndex = 0;
   let usesIndex = 0;
@@ -762,7 +800,6 @@ function buildItemPages(item) {
 
   while (
     pageNo === 0 ||
-    descIndex < descriptionParts.length ||
     highlightsIndex < highlights.length ||
     specsIndex < specs.length ||
     usesIndex < uses.length ||
@@ -784,36 +821,42 @@ function buildItemPages(item) {
     let advantagesChunk = [];
 
     if (!isContinuation) {
-      const descTake = takeTextPartsByBudget(
-        descriptionParts,
-        descIndex,
-        Math.max(6, leftRemaining - 5)
-      );
-      descriptionPart = descTake.items.join("\n\n");
-      descIndex = descTake.nextIndex;
-      leftRemaining -= descTake.usedUnits;
+      // PÁGINA 1: La descripción pertenece EXCLUSIVAMENTE a la primera página
+      if (fullDescription && !descConsumedOnPage1) {
+        descConsumedOnPage1 = true;
+        descriptionPart = fullDescription;
 
-      const highlightsTake = takeSimpleListByBudget(
-        highlights,
-        highlightsIndex,
-        Math.max(0, Math.min(4, leftRemaining)),
-        48
-      );
-      highlightsChunk = highlightsTake.items;
-      highlightsIndex = highlightsTake.nextIndex;
-      leftRemaining -= highlightsTake.usedUnits;
+        if (exceedsDescLimit) {
+          leftRemaining = 0;
+        } else {
+          leftRemaining -= descUnits;
+        }
+      }
 
-      const specsTake = takeSpecsByBudget(
-        specs,
-        specsIndex,
-        Math.max(0, leftRemaining)
-      );
-      specsChunkTop = specsTake.items;
-      specsIndex = specsTake.nextIndex;
-      leftRemaining -= specsTake.usedUnits;
+      if (leftRemaining > 0) {
+        const highlightsTake = takeSimpleListByBudget(
+          highlights,
+          highlightsIndex,
+          Math.min(4, leftRemaining),
+          48
+        );
+        highlightsChunk = highlightsTake.items;
+        highlightsIndex = highlightsTake.nextIndex;
+        leftRemaining -= highlightsTake.usedUnits;
+      }
 
-      // En la primera página solo imagen + pocos usos.
-            // En la primera página mantener imagen, pero aprovechar mejor el espacio libre.
+      if (leftRemaining > 0) {
+        const specsTake = takeSpecsByBudget(
+          specs,
+          specsIndex,
+          leftRemaining
+        );
+        specsChunkTop = specsTake.items;
+        specsIndex = specsTake.nextIndex;
+        leftRemaining -= specsTake.usedUnits;
+      }
+
+      // En la primera página mantener imagen, pero aprovechar mejor el espacio libre.
       if (item.imageSrc) {
         rightRemaining -= 4;
       }
@@ -849,7 +892,7 @@ function buildItemPages(item) {
       rightRemaining -= advantagesTake.usedUnits;
 
     } else {
-      // Continuación: prioridad técnica.
+      // Continuación: prioridad técnica. NUNCA se asigna o fragmenta descripción
       const specsTakeTop = takeSpecsByBudget(
         specs,
         specsIndex,
@@ -897,20 +940,6 @@ function buildItemPages(item) {
       advantagesChunk = advantagesTake.items;
       advantagesIndex = advantagesTake.nextIndex;
       rightRemaining -= advantagesTake.usedUnits;
-
-      // Si ya no hay specs pero todavía sobra izquierda, meter texto restante.
-      if (leftRemaining > 4 && descIndex < descriptionParts.length) {
-        const descTakeExtra = takeTextPartsByBudget(
-          descriptionParts,
-          descIndex,
-          leftRemaining
-        );
-        if (descTakeExtra.items.length) {
-          descriptionPart = descTakeExtra.items.join("\n\n");
-          descIndex = descTakeExtra.nextIndex;
-          leftRemaining -= descTakeExtra.usedUnits;
-        }
-      }
 
       if (leftRemaining > 2 && highlightsIndex < highlights.length) {
         const highlightsTakeExtra = takeSimpleListByBudget(
@@ -1206,6 +1235,14 @@ function bindButtons() {
   if (printBtn) {
     printBtn.onclick = (e) => {
       e.preventDefault();
+      const invalidItems = getInvalidDescriptionItems();
+      if (invalidItems.length > 0) {
+        const itemNames = invalidItems.map(i => `• ${i.title || 'Nuevo equipo'}`).join("\n");
+        alert(
+          `Impresión bloqueada:\n\nLa descripción de los siguientes equipos supera el espacio seguro de la primera página y no se puede imprimir:\n\n${itemNames}\n\nSintetice el texto antes de exportar o imprimir.`
+        );
+        return;
+      }
       window.print();
     };
   }
