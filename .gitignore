@@ -25,5 +25,5 @@ venv/
 # Uploaded quotation images
 static/uploads/cotizaciones/*
 !static/uploads/cotizaciones/.gitkeep
-.signatures/*
-static/signatures/*
+.signatures/
+static/signatures/
